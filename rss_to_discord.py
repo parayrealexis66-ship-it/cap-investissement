@@ -1,3 +1,5 @@
+"""Publish new RSS/Atom headlines to a Discord webhook without third-party packages."""
+import argparse
 import email.utils
 import html
 import json
@@ -13,14 +15,20 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 
-
 ROOT = Path(__file__).parent
 FEEDS_PATH = ROOT / "feeds.json"
-STATE_DIR = ROOT / ".state"
-STATE_PATH = STATE_DIR / "seen.json"
-MAX_MESSAGE_LENGTH = 1900
+STATE_PATH = ROOT / ".state" / "seen.json"
 MAX_ITEMS_PER_FEED = 2
 FIRST_RUN_LOOKBACK_HOURS = 6
+UTC = timezone.utc
+
+
+class FeedError(Exception):
+    """A public source could not be read."""
+
+
+class PublishError(Exception):
+    """A safe error message that never contains the webhook URL."""
 
 
 class TextExtractor(HTMLParser):
@@ -33,35 +41,31 @@ class TextExtractor(HTMLParser):
 
 
 def clean_text(value):
-    if not value:
-        return ""
     parser = TextExtractor()
-    try:
-        parser.feed(value)
-        text = " ".join(parser.parts)
-    except Exception:
-        text = value
-    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+    parser.feed(value or "")
+    return re.sub(r"\s+", " ", html.unescape(" ".join(parser.parts))).strip()
+
+
+def local_name(element):
+    return element.tag.rsplit("}", 1)[-1].lower()
 
 
 def child_text(element, names):
-    for child in list(element):
-        local_name = child.tag.rsplit("}", 1)[-1].lower()
-        if local_name in names:
-            value = clean_text("".join(child.itertext()))
-            if value:
-                return value
+    for name in names:
+        for child in element:
+            if local_name(child) == name:
+                value = clean_text("".join(child.itertext()))
+                if value:
+                    return value
     return ""
 
 
 def item_link(element):
-    for child in list(element):
-        if child.tag.rsplit("}", 1)[-1].lower() == "link":
-            href = child.attrib.get("href")
-            if href:
-                return href.strip()
-            value = (child.text or "").strip()
-            if value:
+    for child in element:
+        if local_name(child) == "link" and child.attrib.get("rel", "alternate") == "alternate":
+            value = (child.attrib.get("href") or child.text or "").strip()
+            parsed = urllib.parse.urlparse(value)
+            if parsed.scheme in ("https", "http") and parsed.hostname:
                 return value
     return ""
 
@@ -77,137 +81,198 @@ def parse_date(value):
         except ValueError:
             return None
     if parsed.tzinfo is None:
-        parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(timezone.utc)
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC)
 
 
 def parse_feed(xml_bytes, feed_name):
     root = ET.fromstring(xml_bytes)
-    elements = [el for el in root.iter() if el.tag.rsplit("}", 1)[-1].lower() in {"item", "entry"}]
+    if local_name(root) not in {"rss", "feed", "rdf"}:
+        raise FeedError("La réponse n'est pas un flux RSS ou Atom")
     results = []
-    for element in elements:
-        title = child_text(element, {"title"})
+    for element in root.iter():
+        if local_name(element) not in {"item", "entry"}:
+            continue
+        title = child_text(element, ("title",))
         link = item_link(element)
-        guid = child_text(element, {"guid", "id"}) or link or title
-        date_text = child_text(element, {"pubdate", "published", "updated", "date"})
-        published = parse_date(date_text)
-        if title and link and guid:
-            results.append({
-                "id": f"{feed_name}|{guid}",
-                "title": title,
-                "link": link,
-                "published": published,
-                "source": feed_name,
-            })
+        guid = child_text(element, ("guid", "id")) or link
+        published = parse_date(child_text(element, ("pubdate", "published", "date", "updated")))
+        if title and link:
+            results.append({"id": guid, "title": title, "link": link,
+                            "published": published, "source": feed_name})
     return results
 
 
-def load_seen():
-    if not STATE_PATH.exists():
-        return set()
+def fetch_feed(feed):
+    request = urllib.request.Request(feed["url"], headers={
+        "User-Agent": "CapInvestissementRSS/1.1 (RSS reader)",
+        "Accept": "application/rss+xml,application/atom+xml,application/xml,text/xml",
+    })
     try:
-        payload = json.loads(STATE_PATH.read_text(encoding="utf-8"))
-        return set(payload.get("seen", []))
-    except (OSError, json.JSONDecodeError, AttributeError):
-        return set()
+        with urllib.request.urlopen(request, timeout=25) as response:
+            raw = response.read(5_000_001)
+        if len(raw) > 5_000_000:
+            raise FeedError("Flux trop volumineux")
+        return parse_feed(raw, feed["name"])
+    except urllib.error.HTTPError as exc:
+        raise FeedError(f"HTTP {exc.code}") from None
+    except (urllib.error.URLError, OSError, ET.ParseError) as exc:
+        raise FeedError(type(exc).__name__) from None
 
 
-def save_seen(seen):
-    STATE_DIR.mkdir(parents=True, exist_ok=True)
-    # Keep a bounded history so the cache remains small.
-    STATE_PATH.write_text(json.dumps({"seen": list(sorted(seen))[-5000:]}, ensure_ascii=False), encoding="utf-8")
+def load_state():
+    if not STATE_PATH.exists():
+        return {"version": 2, "feeds": {}, "welcome_sent": False}
+    payload = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    if payload.get("version") != 2 or not isinstance(payload.get("feeds"), dict):
+        raise ValueError("Format du fichier de suivi invalide")
+    return payload
 
 
-def discord_post(webhook_url, content):
+def save_state(state):
+    STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    for feed_state in state["feeds"].values():
+        entries = sorted(feed_state["seen"].items(), key=lambda item: item[1], reverse=True)
+        for key, _ in entries[5000:]:
+            del feed_state["seen"][key]
+    temporary = STATE_PATH.with_suffix(".tmp")
+    temporary.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(STATE_PATH)
+
+
+def webhook_endpoint(value):
+    value = value.strip()
+    parsed = urllib.parse.urlparse(value)
+    if (parsed.scheme != "https" or parsed.hostname not in {"discord.com", "discordapp.com"}
+            or parsed.username or parsed.password or parsed.port not in (None, 443)
+            or not re.fullmatch(r"/api/(?:v\d+/)?webhooks/\d+/[A-Za-z0-9_.-]+/?", parsed.path)):
+        raise PublishError("Le secret DISCORD_WEBHOOK_URL ne contient pas une URL de webhook Discord valide.")
+    # wait=true returns a message ID only after Discord confirms the post.
+    return urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, "", "wait=true", ""))
+
+
+class NoRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def discord_post(endpoint, content):
     body = json.dumps({"content": content, "allowed_mentions": {"parse": []}}).encode("utf-8")
-    request = urllib.request.Request(
-        webhook_url,
-        data=body,
-        headers={"Content-Type": "application/json", "User-Agent": "CapInvestissementRSS/1.0"},
-        method="POST",
-    )
+    request = urllib.request.Request(endpoint, data=body, method="POST", headers={
+        "Content-Type": "application/json", "User-Agent": "CapInvestissementRSS/1.1"})
+    opener = urllib.request.build_opener(NoRedirects)
     for attempt in range(3):
         try:
-            with urllib.request.urlopen(request, timeout=20) as response:
-                if response.status not in (200, 204):
-                    raise RuntimeError(f"Discord returned HTTP {response.status}")
-                return
+            with opener.open(request, timeout=25) as response:
+                result = json.loads(response.read())
+            if not isinstance(result, dict) or not result.get("id"):
+                raise PublishError("Discord n'a pas confirmé l'envoi du message.")
+            return
         except urllib.error.HTTPError as exc:
             if exc.code == 429 and attempt < 2:
                 try:
-                    retry_after = float(json.loads(exc.read().decode("utf-8")).get("retry_after", 2))
-                except Exception:
+                    retry_after = float(json.loads(exc.read()).get("retry_after", 2))
+                except (ValueError, TypeError, AttributeError):
                     retry_after = 2
-                time.sleep(min(max(retry_after, 1), 10))
-                continue
-            raise RuntimeError(f"Discord returned HTTP {exc.code}") from None
+                if 0 <= retry_after <= 30:
+                    time.sleep(max(1, retry_after))
+                    continue
+            raise PublishError(f"Discord a refusé la publication (HTTP {exc.code}).") from None
+        except (urllib.error.URLError, OSError, ValueError):
+            raise PublishError("Connexion Discord interrompue ; vérifier la prochaine exécution.") from None
 
 
 def format_message(item):
     published = item["published"]
     date_part = f" · {published:%d/%m/%Y %H:%M} UTC" if published else ""
-    content = f"**{item['source']}**{date_part}\n{item['title']}\n{item['link']}"
-    return content[:MAX_MESSAGE_LENGTH]
+    title = re.sub(r"([\\*_~`|])", r"\\\1", item["title"][:600])
+    source = re.sub(r"([\\*_~`|])", r"\\\1", item["source"][:120])
+    link = item["link"].replace("\n", "").replace("\r", "")
+    if len(link) > 900:
+        raise PublishError("Lien d'article trop long pour Discord.")
+    return f"**{source}**{date_part}\n{title}\n<{link}>"
 
 
-def main():
-    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
-    if not webhook_url:
-        print("Missing required Actions secret: DISCORD_WEBHOOK_URL", file=sys.stderr)
-        return 2
-    parsed_url = urllib.parse.urlparse(webhook_url)
-    if parsed_url.scheme != "https" or parsed_url.hostname != "discord.com" or not parsed_url.path.startswith("/api/webhooks/"):
-        print("DISCORD_WEBHOOK_URL must be a Discord HTTPS webhook URL", file=sys.stderr)
-        return 2
+def publish_entries(feed, entries, state, endpoint, now):
+    feed_state = state["feeds"].setdefault(feed["url"], {"initialized": False, "seen": {}})
+    seen = feed_state["seen"]
+    stamp = now.isoformat()
+    cutoff = now - timedelta(hours=FIRST_RUN_LOOKBACK_HOURS)
+    if not feed_state["initialized"]:
+        # Establish a baseline for each source separately, even if another source was down.
+        for item in entries:
+            if item["published"] is None or item["published"] < cutoff:
+                seen[item["id"]] = stamp
+        feed_state["initialized"] = True
+        save_state(state)
+    pending = [item for item in entries if item["id"] not in seen]
+    pending.sort(key=lambda item: item["published"] or now)
+    sent = 0
+    for item in pending:
+        if item["id"] in seen or (item["published"] and item["published"] > now):
+            continue
+        if sent >= MAX_ITEMS_PER_FEED:
+            break
+        discord_post(endpoint, format_message(item))
+        seen[item["id"]] = stamp
+        sent += 1
+        save_state(state)  # Never mark unsent items; preserve each confirmed post.
+    return sent
 
+
+def write_summary(lines):
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        with open(os.environ["GITHUB_STEP_SUMMARY"], "a", encoding="utf-8") as stream:
+            stream.write("\n".join(lines) + "\n")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--check", action="store_true", help="Vérifier les sources sans publier ni modifier le suivi")
+    args = parser.parse_args(argv)
     feeds = json.loads(FEEDS_PATH.read_text(encoding="utf-8"))
     if not isinstance(feeds, list) or not feeds:
-        print("feeds.json must contain at least one feed", file=sys.stderr)
-        return 2
-
-    seen = load_seen()
-    first_run = not seen
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=FIRST_RUN_LOOKBACK_HOURS)
-    new_seen = set(seen)
-    pending = []
-    errors = []
-
+        raise ValueError("feeds.json doit contenir au moins une source")
     for feed in feeds:
-        name = str(feed.get("name", "RSS")).strip() or "RSS"
-        url = str(feed.get("url", "")).strip()
-        if not url.startswith("https://"):
-            errors.append(f"{name}: feed URL must use HTTPS")
-            continue
-        req = urllib.request.Request(url, headers={"User-Agent": "CapInvestissementRSS/1.0 (RSS reader)"})
+        if (not isinstance(feed, dict) or not feed.get("name")
+                or not isinstance(feed.get("url"), str) or not feed["url"].startswith("https://")):
+            raise ValueError("Chaque source doit avoir un nom et une URL HTTPS")
+    endpoint = None if args.check else webhook_endpoint(os.environ.get("DISCORD_WEBHOOK_URL", ""))
+    available, failures = [], []
+    for feed in feeds:
         try:
-            with urllib.request.urlopen(req, timeout=25) as response:
-                entries = parse_feed(response.read(), name)
-            entries.sort(key=lambda item: item["published"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-            for item in entries:
-                if item["id"] in seen:
-                    continue
-                new_seen.add(item["id"])
-                if first_run and item["published"] and item["published"] < cutoff:
-                    continue
-                pending.append(item)
-        except Exception as exc:
-            # Do not print request URLs or webhook details into public workflow logs.
-            errors.append(f"{name}: {type(exc).__name__}")
-
-    pending.sort(key=lambda item: item["published"] or datetime.min.replace(tzinfo=timezone.utc), reverse=True)
-    per_feed_count = {}
-    for item in pending:
-        if per_feed_count.get(item["source"], 0) >= MAX_ITEMS_PER_FEED:
-            continue
-        discord_post(webhook_url, format_message(item))
-        per_feed_count[item["source"]] = per_feed_count.get(item["source"], 0) + 1
-
-    save_seen(new_seen)
-    if errors:
-        print("Some feeds could not be read: " + "; ".join(errors))
-    print(f"Published {sum(per_feed_count.values())} new item(s).")
-    return 0
+            entries = fetch_feed(feed)
+            available.append((feed, entries))
+            print(f"Source disponible : {feed['name']} — {len(entries)} éléments.")
+        except FeedError as exc:
+            failures.append(feed["name"])
+            print(f"::warning::Source indisponible : {feed['name']} ({exc}).")
+    if not available:
+        write_summary(["## Sources indisponibles", "Aucun flux n'a pu être lu ; aucune publication effectuée."])
+        return 1
+    if args.check:
+        write_summary(["## Vérification des sources", f"{len(available)}/{len(feeds)} sources disponibles. Aucun message envoyé."])
+        return 1 if failures else 0
+    state = load_state()
+    if not state.get("welcome_sent"):
+        discord_post(endpoint, "✅ **Cap Investissement — flux connecté**\nLa connexion Discord est opérationnelle. Les nouveaux titres seront recherchés deux fois par heure.")
+        state["welcome_sent"] = True
+        save_state(state)
+    sent = 0
+    for feed, entries in available:
+        sent += publish_entries(feed, entries, state, endpoint, datetime.now(UTC))
+    print(f"Publication terminée : {sent} actualité(s) envoyée(s).")
+    write_summary(["## Flux Discord opérationnel", f"{sent} actualité(s) envoyée(s) ; {len(available)}/{len(feeds)} sources disponibles.",
+                   "Contrôle prévu deux fois par heure (minutes 15 et 45), sous réserve des délais de GitHub."])
+    return 1 if failures else 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        sys.exit(main())
+    except (PublishError, ValueError, OSError) as exc:
+        # Never include an exception traceback or a secret URL in public logs.
+        message = str(exc) if isinstance(exc, PublishError) else "Fichier de configuration ou de suivi invalide."
+        print(f"::error::{message}", file=sys.stderr)
+        write_summary(["## Exécution interrompue", message])
+        sys.exit(1)

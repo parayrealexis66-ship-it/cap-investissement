@@ -1,0 +1,80 @@
+name: Discord RSS
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/discord-rss.yml'
+      - 'rss_to_discord.py'
+      - 'feeds.json'
+      - 'test_rss_to_discord.py'
+  workflow_dispatch:
+  schedule:
+    - cron: '15,45 * * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: discord-rss
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Actualités Cap Investissement
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Vérifier le traitement des actualités
+        run: python -m unittest -v
+
+      - name: Vérifier la présence du secret Discord
+        id: webhook
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          python - <<'PY'
+          import os
+          ready = bool(os.environ.get('DISCORD_WEBHOOK_URL', '').strip())
+          with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+              output.write(f"ready={'true' if ready else 'false'}\n")
+          if ready:
+              print('Secret Discord présent. Sa valeur reste confidentielle.')
+          else:
+              print('::warning::Configuration en attente : ajouter le secret Actions DISCORD_WEBHOOK_URL.')
+              with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+                  summary.write('## Installation prête — webhook à ajouter\n\n')
+                  summary.write('La publication est en attente du secret `DISCORD_WEBHOOK_URL`.\n\n')
+                  summary.write('[Ajouter le secret](https://github.com/parayrealexis66-ship-it/cap-investissement/settings/secrets/actions/new)\n\n')
+                  summary.write('Après son ajout, la prochaine exécution planifiée démarrera le flux automatiquement.\n')
+          PY
+
+      - name: Vérifier les sources en attendant le webhook
+        if: steps.webhook.outputs.ready != 'true'
+        run: python rss_to_discord.py --check
+
+      - name: Retrouver les actualités déjà envoyées
+        if: steps.webhook.outputs.ready == 'true'
+        uses: actions/cache/restore@v4
+        with:
+          path: .state
+          key: discord-rss-v2-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: discord-rss-v2-
+
+      - name: Publier dans le salon Discord
+        if: steps.webhook.outputs.ready == 'true'
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: python rss_to_discord.py
+
+      - name: Conserver les envois confirmés
+        if: always() && steps.webhook.outputs.ready == 'true' && hashFiles('.state/seen.json') != ''
+        uses: actions/cache/save@v4
+        with:
+          path: .state
+          key: discord-rss-v2-${{ github.run_id }}-${{ github.run_attempt }}

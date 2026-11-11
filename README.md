@@ -1,36 +1,56 @@
-# Cap Investissement — flux RSS vers Discord
+# Cap Investissement — actualités Discord
 
-Ce petit projet publie automatiquement les nouveaux titres des flux RSS configurés dans le salon Discord associé à un webhook. Il ne lit pas les messages et ne nécessite ni bot Discord ni clé d’API de marché.
+Ce dépôt recherche les nouveaux titres de la BCE et de la Federal Reserve et les publie dans le salon associé au webhook Discord. Il fonctionne sur les serveurs de GitHub, même lorsque l’ordinateur est éteint.
 
-## Flux inclus
+[Ouvrir le suivi des exécutions](https://github.com/parayrealexis66-ship-it/cap-investissement/actions/workflows/discord-rss.yml)
 
-- Banque centrale européenne : communiqués, discours et interviews.
-- Federal Reserve : annonces de politique monétaire.
+## Activation
 
-Les URL proviennent des pages RSS officielles de la BCE et de la Fed. Tu peux ajouter ou retirer des sources dans `feeds.json`.
+Les fichiers et la planification sont installés. Si le secret n’est pas encore enregistré :
 
-## Mise en route
+1. [Ouvrir la création d’un secret Actions](https://github.com/parayrealexis66-ship-it/cap-investissement/settings/secrets/actions/new).
+2. Dans **Name**, saisir exactement `DISCORD_WEBHOOK_URL`.
+3. Dans **Secret**, coller l’URL copiée dans les paramètres du webhook Discord, puis cliquer sur **Add secret**.
 
-1. Crée un dépôt GitHub **public** et importe le contenu de ce dossier. Le code sera visible publiquement ; n’y ajoute aucune donnée privée.
-2. Dans le dépôt, ouvre **Settings → Secrets and variables → Actions → New repository secret**.
-3. Nom du secret : `DISCORD_WEBHOOK_URL`. Valeur : l’URL du webhook que tu as créée dans Discord. Ne la mets jamais dans un fichier ni dans un message public.
-4. Ouvre l’onglet **Actions**, active les workflows si GitHub le demande, puis lance **Discord RSS → Run workflow** une première fois.
-5. Les vérifications suivantes sont planifiées deux fois par heure. GitHub peut décaler les tâches planifiées en période de forte charge.
+La prochaine exécution planifiée utilisera ce secret automatiquement. Pour démarrer immédiatement, ouvrir **Actions → Discord RSS → Run workflow** et sélectionner `main`.
 
-Au premier lancement, le script publie au maximum les deux titres les plus récents par source, s’ils datent de moins de six heures. Les exécutions suivantes évitent les doublons grâce à un cache GitHub Actions.
+L’URL reste dans les secrets GitHub et n’est pas inscrite dans les fichiers, les messages ou les journaux. Le connecteur ChatGPT n’a pas besoin de connaître sa valeur.
 
-## Modifier les sources
+Au premier démarrage réussi, un message **« Cap Investissement — flux connecté »** apparaît dans le salon. Si le secret manque, GitHub affiche **« Installation prête — webhook à ajouter »** ; cela ne signifie pas que Discord est déjà connecté.
 
-Dans `feeds.json`, ajoute un objet avec un nom et une URL RSS :
+## Fonctionnement
 
-```json
-{"name": "Nom de la source", "url": "https://exemple.org/rss.xml"}
+- Recherche prévue deux fois par heure, aux minutes **15 et 45**.
+- Jusqu’à **deux nouvelles actualités par source et par passage**. Le surplus attend le passage suivant.
+- Premier passage : les articles de plus de six heures ou sans date sont enregistrés comme historique, sans être envoyés.
+- Chaque publication contient la source, le titre, la date UTC lorsqu’elle est disponible et le lien original. Les titres restent dans la langue de la source.
+- Un titre n’est enregistré comme envoyé qu’après confirmation de Discord. Les envois confirmés sont conservés même si une autre source ou un envoi ultérieur échoue.
+- Aucun résumé automatique, aucune recommandation et aucune lecture des conversations Discord.
+
+## Sources
+
+Les flux se modifient dans `feeds.json` :
+
+- [BCE : page RSS officielle](https://www.ecb.europa.eu/home/html/rss.fr.html) — communiqués, discours, interviews.
+- [Federal Reserve : page RSS officielle](https://www.federalreserve.gov/feeds/feeds.htm) — politique monétaire.
+
+Ce premier flux couvre surtout la macroéconomie et les banques centrales. Les actualités d’entreprises pourront être ajoutées par de nouvelles sources RSS.
+
+## Suivi et limites
+
+Le résultat détaillé est visible dans **Actions → une exécution → Summary**. Une source indisponible est signalée ; les autres continuent à publier. Un webhook absent ou invalide est signalé sans en afficher la valeur.
+
+GitHub peut retarder ou omettre une exécution planifiée en période de forte charge. Les workflows planifiés d’un dépôt public peuvent être désactivés après **60 jours sans activité sur le dépôt** ; ils se réactivent dans Actions. Les runners standards sont gratuits pour un dépôt public, selon l’offre GitHub en vigueur.
+
+Le suivi des titres utilise le cache GitHub Actions. Une suppression ou éviction du cache réinitialise ce suivi : le message de connexion et certains titres des six dernières heures peuvent alors être envoyés à nouveau. Une coupure après l’acceptation d’un message mais avant l’enregistrement de sa confirmation peut aussi provoquer un doublon ; l’envoi exactement une fois n’est pas garanti.
+
+## Vérifications techniques
+
+Aucune dépendance Python externe. Python 3.12 est utilisé dans GitHub Actions.
+
+```sh
+python -m unittest -v
+python rss_to_discord.py --check
 ```
 
-Le script publie le titre, le nom de la source, la date lorsqu’elle est fournie et le lien vers l’article. Il ne génère pas de résumé ni de recommandation.
-
-## Dépannage
-
-- Si le workflow échoue avec `DISCORD_WEBHOOK_URL is missing`, vérifie le nom du secret et qu’il est enregistré dans **Actions secrets**.
-- Si une source ne répond plus ou change son format, retire-la temporairement de `feeds.json` ou remplace son URL RSS.
-- Une exécution manuelle est disponible via **Actions → Discord RSS → Run workflow**.
+La seconde commande vérifie réellement les flux RSS sans envoyer de message ni modifier le suivi. Les tests couvrent RSS/Atom, doublons, files d’attente, première lecture de chaque source, échecs partiels et protection de l’URL du webhook.
