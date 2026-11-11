@@ -6,5 +6,33 @@
   {
     "name": "Federal Reserve — politique monétaire",
     "url": "https://www.federalreserve.gov/feeds/press_monetary.xml"
+  },
+  {
+    "name": "CNBC — marchés et entreprises (anglais)",
+    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+    "include_keywords": [
+      "stock",
+      "market",
+      "shares",
+      "earnings",
+      "inflation",
+      "fed ",
+      "rates",
+      "nvidia",
+      "coreweave",
+      "wall street",
+      "s&p",
+      "nasdaq",
+      "tariff",
+      "economy",
+      "economic",
+      "bond",
+      "oil",
+      "dollar"
+    ]
+  },
+  {
+    "name": "Le Monde — économie (français)",
+    "url": "https://www.lemonde.fr/economie/rss_full.xml"
   }
 ]

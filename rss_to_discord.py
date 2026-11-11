@@ -175,7 +175,7 @@ def discord_post(endpoint, content):
                 result = json.loads(response.read())
             if not isinstance(result, dict) or not result.get("id"):
                 raise PublishError("Discord n'a pas confirmé l'envoi du message.")
-            return
+            return result
         except urllib.error.HTTPError as exc:
             if exc.code == 429 and attempt < 2:
                 try:
@@ -245,13 +245,16 @@ def publish_entries(feed, entries, state, endpoint, now):
             continue
         if sent >= MAX_ITEMS_PER_FEED or daily['count'] >= MAX_DAILY_MESSAGES:
             break
-        discord_post(endpoint, format_message(item))
+        confirmation = discord_post(endpoint, format_message(item))
+        if isinstance(confirmation, dict):
+            print(f"Envoi confirmé par Discord : message {confirmation.get('id')} · salon {confirmation.get('channel_id')}.")
         seen[item["id"]] = stamp
         sent += 1
         daily['count'] += 1
         article_keys[key] = stamp
         save_state(state)  # Never mark unsent items; preserve each confirmed post.
     save_state(state)
+    print(f"Bilan {feed['name']} : {len(entries)} éléments lus ; {len(pending)} nouveaux identifiants ; {sent} envois confirmés ; quota journalier {daily['count']}/{MAX_DAILY_MESSAGES}.")
     return sent
 
 

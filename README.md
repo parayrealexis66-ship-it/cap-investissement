@@ -65,3 +65,9 @@ La seconde commande vérifie réellement les flux RSS sans envoyer de message ni
 - GitHub Actions a désormais `contents: write` pour cette sauvegarde. Un échec de restauration bloque la publication afin de limiter les doublons.
 - Une coupure entre la confirmation Discord et la sauvegarde distante peut encore produire un doublon ; le stockage ne garantit pas une livraison exactement une fois.
 - Les alertes privées de panne et les sources d’actualités d’entreprises ne sont pas encore configurées.
+
+## Sources d’actualités actives
+
+Le flux comprend la BCE, la Fed, CNBC (marchés et entreprises, titres en anglais filtrés par mots-clés) et Le Monde Économie (français). Les messages conservent le titre original, la source, la date et le lien ; certains articles peuvent nécessiter un abonnement sur le site éditeur. Aucun texte intégral n’est copié.
+
+Le contrôle deux fois par heure n’implique pas deux publications par heure : seuls les éléments nouveaux et éligibles sont envoyés. Lors de l’ajout d’une source, seuls les articles des six dernières heures sont repris. Les logs indiquent désormais les volumes examinés et les identifiants des messages confirmés par Discord, sans révéler le webhook.
