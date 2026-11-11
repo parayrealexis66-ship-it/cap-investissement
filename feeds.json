@@ -9,27 +9,7 @@
   },
   {
     "name": "CNBC — marchés et entreprises (anglais)",
-    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
-    "include_keywords": [
-      "stock",
-      "market",
-      "shares",
-      "earnings",
-      "inflation",
-      "fed ",
-      "rates",
-      "nvidia",
-      "coreweave",
-      "wall street",
-      "s&p",
-      "nasdaq",
-      "tariff",
-      "economy",
-      "economic",
-      "bond",
-      "oil",
-      "dollar"
-    ]
+    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"
   },
   {
     "name": "Le Monde — économie (français)",

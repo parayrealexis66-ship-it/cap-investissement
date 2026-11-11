@@ -70,4 +70,18 @@ La seconde commande vérifie réellement les flux RSS sans envoyer de message ni
 
 Le flux comprend la BCE, la Fed, CNBC (marchés et entreprises, titres en anglais filtrés par mots-clés) et Le Monde Économie (français). Les messages conservent le titre original, la source, la date et le lien ; certains articles peuvent nécessiter un abonnement sur le site éditeur. Aucun texte intégral n’est copié.
 
-Le contrôle deux fois par heure n’implique pas deux publications par heure : seuls les éléments nouveaux et éligibles sont envoyés. Lors de l’ajout d’une source, seuls les articles des six dernières heures sont repris. Les logs indiquent désormais les volumes examinés et les identifiants des messages confirmés par Discord, sans révéler le webhook.
+Le contrôle deux fois par heure n’implique pas deux publications par heure : seuls les éléments nouveaux et éligibles sont envoyés. Lors de l’ajout d’une source, seuls les articles des dernières 24 heures sont candidats au briefing. Les logs indiquent désormais les volumes examinés et les identifiants des messages confirmés par Discord, sans révéler le webhook.
+
+## Briefings visuels ciblés
+
+Le bot publie maintenant une couverture et jusqu’à trois cartes PNG dans un même message Discord, avec les liens sources. Ouvrir une image permet de parcourir les pièces jointes ; ce n’est pas un composant Instagram embarqué. Les titres sont conservés dans leur langue d’origine, sans résumé IA inventé. Les encadrés « repère de lecture » sont des questions pédagogiques, pas des faits supplémentaires sur l’entreprise.
+
+Sélection : entreprises de la watchlist privée d’abord, puis au maximum un sujet macro par briefing (taux des banques centrales, risque de bulle/crise/krach lié aux marchés). Une mention de crise reste étiquetée « risque évoqué ». Ce filtre lexical est une première sélection, pas une validation journalistique. Huit informations maximum par jour, aucun remplissage quand il n’y a rien de pertinent.
+
+### Activer la watchlist privée
+
+Dans Settings → Secrets and variables → Actions, ajouter un secret nommé `WATCHLIST`. Mettre une entreprise par ligne ; séparer ses alias par `|` sur la même ligne. Exemple fictif : `Entreprise Exemple|Example Inc`. Ne pas mettre les montants, quantités ou noms des membres. Ne jamais ajouter la vraie liste au dépôt public. Sans ce secret, seul le filtre macro est actif ; un avertissement apparaît dans les logs.
+
+La liste est utilisée localement par le job sur des flux publics téléchargés sans requête personnalisée. Elle n’est transmise à aucun moteur de recherche. Elle n’est pas encore synchronisée automatiquement avec Cap Investisseur. Les flux généralistes ne garantissent pas la couverture de chaque entreprise.
+
+Les cartes ne publient aucune position, aucun PRU ni nom de membre. Le contenu est présenté sous la marque Cap Investissement, sans logo ni reprise de visuels de tiers.

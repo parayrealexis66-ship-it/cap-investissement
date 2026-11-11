@@ -7,6 +7,7 @@ import json
 import os
 import re
 import sys
+import uuid
 import time
 import urllib.error
 import urllib.parse
@@ -16,6 +17,9 @@ from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
 from zoneinfo import ZoneInfo
+
+if __name__ == '__main__':
+    sys.modules['rss_to_discord'] = sys.modules[__name__]
 
 ROOT = Path(__file__).parent
 FEEDS_PATH = ROOT / "feeds.json"
@@ -164,10 +168,21 @@ class NoRedirects(urllib.request.HTTPRedirectHandler):
         return None
 
 
-def discord_post(endpoint, content):
-    body = json.dumps({"content": content, "allowed_mentions": {"parse": []}}).encode("utf-8")
+def discord_post(endpoint, content, files=None):
+    payload={"content":content,"allowed_mentions":{"parse":[]}}
+    content_type='application/json'
+    if files:
+        boundary='cap-'+uuid.uuid4().hex
+        payload['attachments']=[{'id':i,'filename':name,'description':alt} for i,(name,raw,alt) in enumerate(files)]
+        parts=[f'--{boundary}\r\nContent-Disposition: form-data; name="payload_json"\r\nContent-Type: application/json\r\n\r\n'.encode()+json.dumps(payload).encode()+b'\r\n']
+        for i,(name,raw,alt) in enumerate(files):
+            parts.append(f'--{boundary}\r\nContent-Disposition: form-data; name="files[{i}]"; filename="{name}"\r\nContent-Type: image/png\r\n\r\n'.encode()+raw+b'\r\n')
+        parts.append(f'--{boundary}--\r\n'.encode());body=b''.join(parts)
+        content_type=f'multipart/form-data; boundary={boundary}'
+    else:
+        body=json.dumps(payload).encode('utf-8')
     request = urllib.request.Request(endpoint, data=body, method="POST", headers={
-        "Content-Type": "application/json", "User-Agent": "CapInvestissementRSS/1.1"})
+        "Content-Type": content_type, "User-Agent": "CapInvestissementRSS/1.1"})
     opener = urllib.request.build_opener(NoRedirects)
     for attempt in range(3):
         try:
@@ -296,9 +311,8 @@ def main(argv=None):
         discord_post(endpoint, "✅ **Cap Investissement — flux connecté**\nLa connexion Discord est opérationnelle. Les nouveaux titres seront recherchés deux fois par heure.")
         state["welcome_sent"] = True
         save_state(state)
-    sent = 0
-    for feed, entries in available:
-        sent += publish_entries(feed, entries, state, endpoint, datetime.now(UTC))
+    from briefing import publish_briefing
+    sent = publish_briefing(available, state, endpoint, datetime.now(UTC))
     print(f"Publication terminée : {sent} actualité(s) envoyée(s).")
     write_summary(["## Flux Discord opérationnel", f"{sent} actualité(s) envoyée(s) ; {len(available)}/{len(feeds)} sources disponibles.",
                    f"Plafond : {MAX_DAILY_MESSAGES} actualités/jour (heure de Paris).",

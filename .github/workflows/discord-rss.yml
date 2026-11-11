@@ -9,6 +9,11 @@ on:
       - 'feeds.json'
       - 'state_store.py'
       - 'test_rss_to_discord.py'
+      - 'briefing.py'
+      - 'editorial.py'
+      - 'carousel.py'
+      - 'test_briefing.py'
+      - 'requirements.txt'
   workflow_dispatch:
   schedule:
     - cron: '15,45 * * * *'
@@ -30,6 +35,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+
+      - name: Installer le rendu des cartes
+        run: python -m pip install -r requirements.txt
 
       - name: Vérifier le traitement des actualités
         run: python -m unittest -v
@@ -78,6 +86,7 @@ jobs:
         if: steps.webhook.outputs.ready == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          WATCHLIST: ${{ secrets.WATCHLIST }}
         run: python rss_to_discord.py
 
       - name: Conserver les envois confirmés
