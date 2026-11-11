@@ -96,6 +96,34 @@ class RssBehaviourTests(unittest.TestCase):
             post.assert_not_called()
         self.assertFalse(rss.STATE_PATH.exists())
 
+    def test_same_article_across_feeds_with_tracking_posts_once(self):
+        first=self.item('a'); second=self.item('b');second['link']=first['link']+'?utm_source=news'
+        with patch.object(rss,'discord_post') as post:
+            rss.publish_entries(self.feed,[first],self.state,'endpoint',self.now)
+            rss.publish_entries({'name':'B','url':'https://example.org/b-rss'},[second],self.state,'endpoint',self.now)
+            self.assertEqual(post.call_count,1)
+
+    def test_daily_limit_keeps_unsent_items_pending(self):
+        self.state['daily']={'date':self.now.date().isoformat(),'count':8}
+        with patch.object(rss,'discord_post') as post:
+            self.assertEqual(rss.publish_entries(self.feed,[self.item('a')],self.state,'endpoint',self.now),0)
+            self.assertNotIn('a',self.state['feeds'][self.feed['url']]['seen'])
+            self.assertEqual(rss.publish_entries(self.feed,[self.item('a')],self.state,'endpoint',self.now+timedelta(days=1)),1)
+            self.assertEqual(post.call_count,1)
+
+    def test_filters_and_stale_backlog(self):
+        self.state['feeds'][self.feed['url']]={'initialized':True,'seen':{}}
+        feed={**self.feed,'include_keywords':['inflation'],'exclude_keywords':['test']}
+        good={**self.item('a'),'title':'Inflation outlook'}
+        bad={**self.item('b'),'title':'Inflation test'}
+        with patch.object(rss,'discord_post') as post:
+            rss.publish_entries(feed,[good,bad,self.item('old',72)],self.state,'endpoint',self.now)
+            self.assertEqual(post.call_count,1)
+
+    def test_paris_time_is_used(self):
+        self.assertIn('12:00',rss.format_message(self.item('a')))
+        self.assertIn('heure de Paris',rss.format_message(self.item('a')))
+
 
 if __name__ == '__main__':
     unittest.main()

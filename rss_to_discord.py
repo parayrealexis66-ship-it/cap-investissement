@@ -2,6 +2,7 @@
 import argparse
 import email.utils
 import html
+import hashlib
 import json
 import os
 import re
@@ -14,6 +15,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).parent
 FEEDS_PATH = ROOT / "feeds.json"
@@ -21,6 +23,9 @@ STATE_PATH = ROOT / ".state" / "seen.json"
 MAX_ITEMS_PER_FEED = 2
 FIRST_RUN_LOOKBACK_HOURS = 6
 UTC = timezone.utc
+PARIS = ZoneInfo("Europe/Paris")
+MAX_DAILY_MESSAGES = 8
+MAX_AGE_HOURS = 48
 
 
 class FeedError(Exception):
@@ -135,6 +140,9 @@ def save_state(state):
         entries = sorted(feed_state["seen"].items(), key=lambda item: item[1], reverse=True)
         for key, _ in entries[5000:]:
             del feed_state["seen"][key]
+    articles = state.get('articles', {})
+    for key, _ in sorted(articles.items(), key=lambda entry: entry[1], reverse=True)[20000:]:
+        del articles[key]
     temporary = STATE_PATH.with_suffix(".tmp")
     temporary.write_text(json.dumps(state, ensure_ascii=False), encoding="utf-8")
     temporary.replace(STATE_PATH)
@@ -182,9 +190,23 @@ def discord_post(endpoint, content):
             raise PublishError("Connexion Discord interrompue ; vérifier la prochaine exécution.") from None
 
 
+def canonical_key(link):
+    parsed = urllib.parse.urlsplit(link)
+    query = [(k,v) for k,v in urllib.parse.parse_qsl(parsed.query) if not k.lower().startswith('utm_') and k.lower() not in {'fbclid','gclid'}]
+    clean = urllib.parse.urlunsplit((parsed.scheme.lower(), parsed.netloc.lower(), parsed.path.rstrip('/'), urllib.parse.urlencode(sorted(query)), ''))
+    return hashlib.sha256(clean.encode()).hexdigest()
+
+
+def matches_filter(feed, item):
+    title = item['title'].casefold()
+    include = feed.get('include_keywords', [])
+    exclude = feed.get('exclude_keywords', [])
+    return (not include or any(word.casefold() in title for word in include)) and not any(word.casefold() in title for word in exclude)
+
+
 def format_message(item):
-    published = item["published"]
-    date_part = f" · {published:%d/%m/%Y %H:%M} UTC" if published else ""
+    published = item["published"].astimezone(PARIS) if item["published"] else None
+    date_part = f" · {published:%d/%m/%Y %H:%M} · heure de Paris" if published else ""
     title = re.sub(r"([\\*_~`|])", r"\\\1", item["title"][:600])
     source = re.sub(r"([\\*_~`|])", r"\\\1", item["source"][:120])
     link = item["link"].replace("\n", "").replace("\r", "")
@@ -207,16 +229,29 @@ def publish_entries(feed, entries, state, endpoint, now):
         save_state(state)
     pending = [item for item in entries if item["id"] not in seen]
     pending.sort(key=lambda item: item["published"] or now)
+    # Shared URL index catches the same article appearing in several feeds.
+    article_keys = state.setdefault('articles', {})
+    day = now.astimezone(PARIS).date().isoformat()
+    daily = state.setdefault('daily', {'date': day, 'count': 0})
+    if daily['date'] != day:
+        daily.update(date=day, count=0)
     sent = 0
     for item in pending:
         if item["id"] in seen or (item["published"] and item["published"] > now):
             continue
-        if sent >= MAX_ITEMS_PER_FEED:
+        key = canonical_key(item['link'])
+        if key in article_keys or not matches_filter(feed, item) or (item['published'] and item['published'] < now - timedelta(hours=MAX_AGE_HOURS)):
+            seen[item['id']] = stamp
+            continue
+        if sent >= MAX_ITEMS_PER_FEED or daily['count'] >= MAX_DAILY_MESSAGES:
             break
         discord_post(endpoint, format_message(item))
         seen[item["id"]] = stamp
         sent += 1
+        daily['count'] += 1
+        article_keys[key] = stamp
         save_state(state)  # Never mark unsent items; preserve each confirmed post.
+    save_state(state)
     return sent
 
 
@@ -263,6 +298,7 @@ def main(argv=None):
         sent += publish_entries(feed, entries, state, endpoint, datetime.now(UTC))
     print(f"Publication terminée : {sent} actualité(s) envoyée(s).")
     write_summary(["## Flux Discord opérationnel", f"{sent} actualité(s) envoyée(s) ; {len(available)}/{len(feeds)} sources disponibles.",
+                   f"Plafond : {MAX_DAILY_MESSAGES} actualités/jour (heure de Paris).",
                    "Contrôle prévu deux fois par heure (minutes 15 et 45), sous réserve des délais de GitHub."])
     return 1 if failures else 0
 

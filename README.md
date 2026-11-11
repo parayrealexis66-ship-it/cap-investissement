@@ -54,3 +54,14 @@ python rss_to_discord.py --check
 ```
 
 La seconde commande vérifie réellement les flux RSS sans envoyer de message ni modifier le suivi. Les tests couvrent RSS/Atom, doublons, files d’attente, première lecture de chaque source, échecs partiels et protection de l’URL du webhook.
+
+## Améliorations du suivi
+
+- Dates en heure de Paris, changement été/hiver inclus.
+- Maximum 8 actualités par jour, toutes sources confondues, et 2 par source à chaque passage. Les éléments en attente restent éligibles pendant 48 heures.
+- Déduplication par URL normalisée (paramètres de suivi ignorés), y compris entre sources. Deux articles différents sur le même événement peuvent encore apparaître.
+- Chaque source peut recevoir `include_keywords` et `exclude_keywords` (listes facultatives, recherche dans le titre). Aucune traduction automatique ni interprétation financière générée.
+- Suivi sauvegardé dans la branche `bot-state` en plus du cache. Elle contient uniquement des identifiants publics d’articles et les compteurs d’envoi, jamais les portefeuilles membres ou les secrets Discord.
+- GitHub Actions a désormais `contents: write` pour cette sauvegarde. Un échec de restauration bloque la publication afin de limiter les doublons.
+- Une coupure entre la confirmation Discord et la sauvegarde distante peut encore produire un doublon ; le stockage ne garantit pas une livraison exactement une fois.
+- Les alertes privées de panne et les sources d’actualités d’entreprises ne sont pas encore configurées.

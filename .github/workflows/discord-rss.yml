@@ -7,13 +7,14 @@ on:
       - '.github/workflows/discord-rss.yml'
       - 'rss_to_discord.py'
       - 'feeds.json'
+      - 'state_store.py'
       - 'test_rss_to_discord.py'
   workflow_dispatch:
   schedule:
     - cron: '15,45 * * * *'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: discord-rss
@@ -66,6 +67,13 @@ jobs:
           key: discord-rss-v2-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: discord-rss-v2-
 
+      - name: Restaurer le suivi durable
+        id: durable
+        if: steps.webhook.outputs.ready == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python state_store.py restore
+
       - name: Publier dans le salon Discord
         if: steps.webhook.outputs.ready == 'true'
         env:
@@ -73,8 +81,14 @@ jobs:
         run: python rss_to_discord.py
 
       - name: Conserver les envois confirmés
-        if: always() && steps.webhook.outputs.ready == 'true' && hashFiles('.state/seen.json') != ''
+        if: always() && steps.durable.outcome == 'success' && steps.webhook.outputs.ready == 'true' && hashFiles('.state/seen.json') != ''
         uses: actions/cache/save@v4
         with:
           path: .state
           key: discord-rss-v2-${{ github.run_id }}-${{ github.run_attempt }}
+
+      - name: Sauvegarder le suivi durable
+        if: always() && steps.durable.outcome == 'success' && steps.webhook.outputs.ready == 'true' && hashFiles('.state/seen.json') != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python state_store.py save
