@@ -1,0 +1,40 @@
+name: Installer le serveur Discord
+on:
+  push:
+    branches: [main]
+    paths: ["server/**", "test_server_setup.py", ".github/workflows/setup-discord.yml"]
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: 'Appliquer les catégories, salons et messages (sinon aperçu)'
+        type: boolean
+        default: false
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: cap-discord-installation
+  cancel-in-progress: false
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Tester l’installation
+        run: python -m unittest test_server_setup -v
+      - name: Configurer CAP Investissement
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          APPLY: ${{ inputs.apply }}
+        run: |
+          if [ "$APPLY" = "true" ]; then
+            python server/setup.py --apply
+          else
+            python server/setup.py
+          fi

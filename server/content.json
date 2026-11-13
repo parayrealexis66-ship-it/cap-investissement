@@ -1,0 +1,95 @@
+{
+  "server_name": "CAP Investissement",
+  "channels": [
+    {
+      "key": "welcome",
+      "name": "BIENVENUE",
+      "type": 4
+    },
+    {
+      "key": "invest",
+      "name": "INVESTIR ENSEMBLE",
+      "type": 4
+    },
+    {
+      "key": "voice",
+      "name": "ÉCHANGER EN DIRECT",
+      "type": 4
+    },
+    {
+      "key": "start",
+      "name": "👋・commencer-ici",
+      "aliases": [
+        "commencer-ici"
+      ],
+      "type": 0,
+      "parent": "welcome",
+      "topic": "Bienvenue, présentation et premiers pas dans Cap Investissement.",
+      "title": "Bienvenue sur Cap Investissement 👋",
+      "message": "**Bienvenue sur Cap Investissement 👋**\n\nMoi, c’est Alexis. J’ai créé cet espace pour vous accompagner dans la compréhension de la Bourse et vous aider à progresser avec méthode.\n\nVous trouverez ici mes analyses d’entreprises, mes convictions et une sélection d’actualités importantes. Nous prendrons aussi le temps d’échanger sur vos questions et votre manière d’aborder l’investissement.\n\n**Pour commencer**, présentez-vous dans 💬・échanges : votre expérience, ce que vous souhaitez apprendre et ce qui vous semble difficile aujourd’hui. Pas besoin de partager vos montants ou vos informations personnelles.\n\nDébutant ou déjà investi, vous pouvez poser vos questions simplement. L’objectif est de comprendre davantage et de gagner progressivement en autonomie.\n\n**Quelques repères :** échanges respectueux, sources identifiables, aucun démarchage ni spam. Les documents et entretiens individuels restent privés. Le flux CAP · Actualités est automatisé ; mes interventions personnelles sont signées avec mon profil Alexis.\n\n**Nos règles**\n- Respect des personnes et des avis ; on discute des arguments.\n- Pas de spam, de démarchage ni de liens d’affiliation non autorisés.\n- Citer la source et la date des informations partagées ; distinguer les faits des opinions.\n- Ne jamais publier d’identifiants, de codes, de coordonnées bancaires ou de documents personnels.\n- Se méfier des messages privés non sollicités et signaler toute usurpation d’identité à Alexis."
+    },
+    {
+      "key": "announcements",
+      "name": "📣・annonces",
+      "aliases": [
+        "annonces"
+      ],
+      "type": 0,
+      "parent": "welcome",
+      "topic": "Les nouvelles de Cap Investissement : fonctionnement du serveur, contenus disponibles et évolutions de l’accompagnement.",
+      "title": "Annonces",
+      "message": "**Les nouvelles de Cap Investissement**\nJe partagerai ici les évolutions du serveur et les nouveaux contenus. Pour les questions et discussions, rendez-vous dans 💬・échanges afin de garder ce salon facile à consulter.\n— Alexis"
+    },
+    {
+      "key": "chat",
+      "name": "💬・échanges",
+      "aliases": [
+        "général",
+        "general",
+        "échanges"
+      ],
+      "type": 0,
+      "parent": "invest",
+      "topic": "Questions, présentations et discussions autour de l’investissement. Tous les niveaux sont bienvenus ; gardez vos données personnelles et documents financiers privés.",
+      "title": "Échanges",
+      "message": "**On fait connaissance ? 👋**\nPrésente-toi en quelques lignes : ton expérience en Bourse, ce que tu souhaites comprendre et ta principale difficulté aujourd’hui. Aucune obligation de dévoiler ton portefeuille ou tes montants.\nUne question simple est toujours une bonne question. Pour discuter d’une actualité, ajoute sa source et explique ce qui t’interpelle."
+    },
+    {
+      "key": "analysis",
+      "name": "🔎・analyses-entreprises",
+      "aliases": [
+        "analyses-entreprises"
+      ],
+      "type": 0,
+      "parent": "invest",
+      "topic": "Comprendre les entreprises : activité, résultats, perspectives, valorisation et risques. Les convictions sont expliquées, les incertitudes aussi.",
+      "title": "Analyses entreprises",
+      "message": "**Comprendre avant de se positionner 🔎**\nDans ce salon, je partagerai mes analyses d’entreprises et le suivi de mes convictions : leur activité, leurs résultats, leurs perspectives et les risques que je surveille.\nChaque analyse sera datée et accompagnée de ses sources. Je distinguerai les faits publiés, mon interprétation et les points encore incertains. Quand je détiens une position dans l’entreprise analysée, je le préciserai.\nUne conviction peut évoluer : les mises à jour auront autant de place que l’analyse initiale. Ces échanges servent à développer votre compréhension, sans promesse de performance.\n— Alexis"
+    },
+    {
+      "key": "news",
+      "name": "🌍・actualités-marchés",
+      "aliases": [
+        "actualités-marchés",
+        "actualité marché",
+        "actualité-marché"
+      ],
+      "type": 0,
+      "parent": "invest",
+      "topic": "Une sélection automatique d’actualités, avec date et source. Le flux peut rester silencieux quand aucune nouvelle ne correspond aux critères.",
+      "title": "Actualités marchés",
+      "message": "**Comment lire ce fil 🌍**\nCAP · Actualités sélectionne automatiquement des titres et les présente sous forme de cartes. Chaque publication renvoie à la source ; les titres peuvent être en anglais.\nUne anticipation de taux n’est pas une décision officielle. Un article sur un risque de crise n’annonce pas forcément une crise avérée. Les encadrés de lecture donnent des repères généraux, pas une analyse complète de l’article.\nJe pourrai compléter certains sujets avec mon propre commentaire, publié depuis mon profil Alexis. Les questions et réactions sont bienvenues dans 💬・échanges."
+    },
+    {
+      "key": "talk",
+      "name": "🎙️・discussion",
+      "aliases": [
+        "Général",
+        "General",
+        "discussion"
+      ],
+      "type": 2,
+      "parent": "voice"
+    }
+  ]
+}
