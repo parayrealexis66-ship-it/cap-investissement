@@ -74,8 +74,12 @@ def publish_briefing(available,state,endpoint,now):
         print(status)
         execution_summary(available, watchlist, state, status)
         return 0
-    content='**CAP INVESTISSEMENT · Le point à retenir**\nOuvre les images pour parcourir le briefing.\n'
-    content+='\n'.join(f"{i}. {x['editorial']['scope']} · Source : <{x['link']}>" for i,x in enumerate(selected,1))
+    def safe_text(value, limit):
+        return re.sub(r'([\\`*_{}\[\]()<>~|])', r'\\\1', value.replace('\n',' '))[:limit]
+    content='\n\n'.join(
+        f"**{safe_text(x['title'], 240)}**\n"
+        f"{x['editorial']['topic']} · [Lire la source](<{x['link']}>)"
+        for x in selected)
     try:
         cards=render(selected,now)
         if len(content)>2000:raise rss.PublishError('Liens trop longs pour le briefing ; aucun envoi effectué.')

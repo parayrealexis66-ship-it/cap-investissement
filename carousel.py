@@ -47,29 +47,23 @@ def encode(im):
     b=BytesIO();im.save(b,format='PNG',optimize=True);return b.getvalue()
 
 def render(items,now):
-    total=len(items)+1; cards=[]
-    im,d=base(1,total)
-    d.text((80,195),now.astimezone(ZoneInfo('Europe/Paris')).strftime('%d.%m.%Y • %H:%M PARIS'),font=font(26),fill=MUTED)
-    paragraph(d,'Le point\nà retenir.',290,94,True,max_lines=3)
-    d.rounded_rectangle((80,620,1000,760),radius=24,fill=GREEN)
-    d.text((115,655),f"{len(items):02} INFORMATION{'S' if len(items)>1 else ''} SÉLECTIONNÉE{'S' if len(items)>1 else ''}",font=font(34,True),fill=BG)
-    scopes=[]
-    for item in items:
-        scope=item['editorial']['scope']
-        if scope not in scopes:scopes.append(scope)
-    paragraph(d,' • '.join(scopes),830,42,True,max_lines=4)
-    d.text((80,1140),'Ouvrir les images pour parcourir le briefing →',font=font(26),fill=MUTED)
-    cards.append(('01-couverture.png',encode(im),'Cap Investissement : briefing de '+str(len(items))+' informations.'))
-    for i,item in enumerate(items,2):
-        im,d=base(i,total);e=item['editorial']
-        d.text((80,185),e['topic'],font=font(29,True),fill=GOLD if e['kind']=='macro' else GREEN)
-        paragraph(d,e['scope'],245,46,True,max_lines=2)
-        d.text((80,415),'À RETENIR • TITRE DE LA SOURCE',font=font(22),fill=MUTED)
-        paragraph(d,item['title'],470,57,True,max_lines=6)
-        d.rounded_rectangle((60,930,1020,1120),radius=24,fill='#1E3E33')
-        d.text((80,953),'REPÈRE DE LECTURE',font=font(20,True),fill=GREEN)
-        paragraph(d,e['note'],993,26,color=INK,max_lines=3)
-        published=item['published'].astimezone(ZoneInfo('Europe/Paris')).strftime('%d/%m/%Y %H:%M')
-        paragraph(d,f"{item['source']} • {published} Paris",1150,21,color=MUTED,max_lines=2)
+    """One square card per story, with no redundant cover."""
+    cards=[]
+    for i,item in enumerate(items,1):
+        im=Image.new('RGB',(1080,1080),BG);d=ImageDraw.Draw(im)
+        d.rectangle((0,0,16,1080),fill=GREEN)
+        d.text((80,55),'CAP INVESTISSEMENT',font=font(30,True),fill=GREEN)
+        d.text((900,60),f'{i:02}/{len(items):02}',font=font(24),fill=MUTED)
+        d.line((80,115,1000,115),fill='#355247',width=2)
+        e=item['editorial']
+        paragraph(d,e['topic'],150,32,True,color=GOLD if e['kind']=='macro' else GREEN,max_lines=2)
+        paragraph(d,e['scope'],240,36,True,max_lines=2)
+        paragraph(d,item['title'],360,58,True,max_lines=5)
+        d.rounded_rectangle((60,775,1020,950),radius=20,fill='#1E3E33')
+        d.text((80,795),'POUR PRENDRE DU RECUL',font=font(22,True),fill=GREEN)
+        paragraph(d,e['note'],835,28,max_lines=3)
+        published=item['published'].astimezone(ZoneInfo('Europe/Paris')).strftime('%d/%m/%Y • %H:%M Paris')
+        paragraph(d,item['source'],970,22,color=MUTED,max_lines=1)
+        d.text((80,1010),published,font=font(22),fill=MUTED)
         cards.append((f'{i:02}-actualite.png',encode(im),item['title'][:1000]))
     return cards

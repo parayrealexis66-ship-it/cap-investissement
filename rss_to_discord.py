@@ -169,7 +169,7 @@ class NoRedirects(urllib.request.HTTPRedirectHandler):
 
 
 def discord_post(endpoint, content, files=None):
-    payload={"content":content,"allowed_mentions":{"parse":[]}}
+    payload={"content":content,"username":"CAP · Actualités","avatar_url":"https://raw.githubusercontent.com/parayrealexis66-ship-it/cap-investissement/main/docs/cap-news-avatar.png","allowed_mentions":{"parse":[]}}
     content_type='application/json'
     if files:
         boundary='cap-'+uuid.uuid4().hex

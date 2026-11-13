@@ -25,7 +25,7 @@ class BriefingTests(unittest.TestCase):
         self.assertIsNone(classify(self.item('Les taux des assurances augmentent'),self.watch))
     def test_macro_risk_is_not_stated_as_confirmed_crash(self):
         self.assertEqual(classify(self.item('Une bulle sur les marchés ?'),[])['topic'],'RISQUE ÉVOQUÉ')
-        self.assertEqual(classify(self.item('La BCE maintient ses taux directeurs'),[])['topic'],'TAUX DIRECTEURS')
+        self.assertEqual(classify(self.item('La BCE maintient ses taux directeurs'),[])['topic'],'TAUX · ANALYSE / ANTICIPATIONS')
     def test_company_priority_and_one_macro_per_brief(self):
         items=[self.item('Crise bancaire en vue','a'),self.item('La BCE baisse ses taux','b'),self.item('Example Inc publie ses résultats','c')]
         selected=select([(self.feed,items)],self.state,self.now,self.watch)
@@ -38,9 +38,9 @@ class BriefingTests(unittest.TestCase):
     def test_pngs_and_daily_cap(self):
         item=self.item('Example Inc publie ses résultats');item['editorial']=classify(item,self.watch)
         cards=render([item],self.now)
-        self.assertEqual(len(cards),2)
+        self.assertEqual(len(cards),1)
         for name,data,alt in cards:
-            with Image.open(BytesIO(data)) as im:self.assertEqual(im.size,(1080,1350))
+            with Image.open(BytesIO(data)) as im:self.assertEqual(im.size,(1080,1080))
         self.state['daily']={'date':'2026-11-11','count':8}
         self.assertEqual(select([(self.feed,[item])],self.state,self.now,self.watch),[])
     def test_same_headline_across_sources_deduplicated(self):
@@ -85,3 +85,19 @@ class BriefingTests(unittest.TestCase):
         self.assertIn(b'name="files[0]"; filename="01.png"',opener.request.data)
         self.assertIn(b'PNG-CONTENT',opener.request.data)
         self.assertIn(b'"allowed_mentions": {"parse": []}',opener.request.data)
+
+    def test_only_official_host_gets_official_label(self):
+        item=self.item('La BCE maintient ses taux directeurs')
+        item['link']='https://www.ecb.europa.eu/press/example'
+        self.assertEqual(classify(item,[])['topic'],'TAUX · SOURCE OFFICIELLE')
+        item['link']='https://www.ecb.europa.eu.example.org/press/example'
+        self.assertEqual(classify(item,[])['topic'],'TAUX · ANALYSE / ANTICIPATIONS')
+
+    def test_compact_message_preserves_link_and_title(self):
+        item=self.item('Example Inc publie ses résultats')
+        with tempfile.TemporaryDirectory() as tmp,patch.object(rss,'STATE_PATH',Path(tmp)/'state.json'),patch('briefing.watchlist_from_env',return_value=self.watch),patch('briefing.render',return_value=[('a.png',b'PNG','alt')]),patch.object(rss,'discord_post',return_value={'id':'123','channel_id':'456'}) as post:
+            self.assertEqual(publish_briefing([(self.feed,[item])],self.state,'endpoint',self.now),1)
+            content=post.call_args.args[1]
+            self.assertIn(item['title'],content)
+            self.assertIn('[Lire la source](<https://example.org/a>)',content)
+            self.assertNotIn('Ouvre les images',content)

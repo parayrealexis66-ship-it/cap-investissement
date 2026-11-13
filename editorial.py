@@ -33,7 +33,12 @@ def classify(item, watchlist):
     rate_context=re.search(r'\b(fed|bce|ecb|fomc)\b|banque centrale|central bank|monetary policy|politique monetaire',t)
     rate_event=re.search(r'taux|rates?|basis points|points de base|monetary policy decision',t)
     if rate_context and rate_event:
-        return dict(topic='TAUX DIRECTEURS',scope='MACRO',note='Distinguer une décision officielle d’une prévision sur les prochains taux.',priority=1,kind='macro')
+        from urllib.parse import urlsplit
+        host = urlsplit(item.get('link', '')).hostname or ''
+        official = host in {'ecb.europa.eu', 'www.ecb.europa.eu', 'federalreserve.gov', 'www.federalreserve.gov'}
+        if official:
+            return dict(topic='TAUX · SOURCE OFFICIELLE',scope='MACRO',note='Publication de la banque centrale : vérifier la décision, sa date et son calendrier d’application.',priority=1,kind='macro')
+        return dict(topic='TAUX · ANALYSE / ANTICIPATIONS',scope='MACRO',note='Distinguer une décision officielle d’une prévision sur les prochains taux.',priority=1,kind='macro')
     market=re.search(r'bours|marche|market|stock|financ|bank|bancair|credit|dette|debt|nasdaq|wall street|\bia\b|\bai\b|technolog',t)
     stress=re.search(r'krach|crash|bulle|bubble|crise|crisis|systemic|systemique|recession|effondr|bank run|defaut souverain',t)
     if market and stress:
