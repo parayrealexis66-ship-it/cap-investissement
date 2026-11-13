@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image
 import rss_to_discord as rss
 from editorial import classify
-from briefing import select, publish_briefing
+from briefing import select, publish_briefing, execution_summary
 from carousel import render
 
 class BriefingTests(unittest.TestCase):
@@ -46,6 +46,27 @@ class BriefingTests(unittest.TestCase):
     def test_same_headline_across_sources_deduplicated(self):
         a=self.item('Example Inc annonce ses résultats','a');b=self.item(a['title'],'b')
         self.assertEqual(len(select([(self.feed,[a,b])],self.state,self.now,self.watch)),1)
+
+    def test_summary_does_not_expose_private_watchlist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary=Path(tmp)/'summary.md'
+            with patch.dict('os.environ',{'GITHUB_STEP_SUMMARY':str(summary)}):
+                execution_summary([(self.feed,[self.item('Example Inc')])],self.watch,self.state,'Publication confirmée.',1,2)
+            text=summary.read_text()
+            self.assertIn('Images confirmées pendant ce passage : 2',text)
+            self.assertNotIn('Example Inc',text)
+            self.assertNotIn('Entreprise Exemple',text)
+
+    def test_daily_limit_is_distinguished_from_no_news(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            summary=Path(tmp)/'summary.md'
+            with patch.dict('os.environ',{'GITHUB_STEP_SUMMARY':str(summary)}),patch.object(rss,'STATE_PATH',Path(tmp)/'state.json'),patch('briefing.watchlist_from_env',return_value=[]),patch.object(rss,'discord_post') as post:
+                publish_briefing([(self.feed,[])],self.state,'endpoint',self.now)
+                self.assertIn('Aucune nouvelle information ciblée éligible.',summary.read_text())
+                self.state['daily']['count']=8
+                publish_briefing([(self.feed,[])],self.state,'endpoint',self.now)
+                self.assertIn('Plafond quotidien atteint.',summary.read_text())
+                post.assert_not_called()
 
     def test_multipart_contains_image_and_disabled_mentions(self):
         import json

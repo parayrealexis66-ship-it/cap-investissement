@@ -1,9 +1,31 @@
 from datetime import timedelta
 import hashlib
 import re
+import os
 from editorial import classify, normalized, watchlist_from_env
 from carousel import render
 import rss_to_discord as rss
+
+
+def execution_summary(available, watchlist, state, status, sent=0, images=0):
+    """Report operational status without publishing the private watchlist."""
+    path = os.environ.get('GITHUB_STEP_SUMMARY')
+    if not path:
+        return
+    lines = [
+        '## Bilan du briefing Discord', '',
+        f'- Résultat : {status}',
+        f'- Sources chargées : {len(available)}',
+        f'- Articles lus : {sum(len(entries) for _, entries in available)}',
+        f'- Ciblage entreprises : {"actif" if watchlist else "inactif — secret WATCHLIST manquant ou vide"}',
+        f'- Informations confirmées par Discord pendant ce passage : {sent}',
+        f'- Images confirmées pendant ce passage : {images}',
+        f'- Compteur quotidien : {state.get("daily", {}).get("count", 0)}/{rss.MAX_DAILY_MESSAGES}',
+    ]
+    if not watchlist:
+        lines += ['', 'Ajouter `WATCHLIST` dans Settings → Secrets and variables → Actions pour activer les actualités des entreprises suivies. La liste reste confidentielle.']
+    with open(path, 'a', encoding='utf-8') as output:
+        output.write('\n'.join(lines) + '\n')
 
 
 def select(available,state,now,watchlist):
@@ -48,12 +70,19 @@ def publish_briefing(available,state,endpoint,now):
     selected=select(available,state,now,watchlist)
     rss.save_state(state)
     if not selected:
-        print('Aucune nouvelle information ciblée éligible, ou plafond quotidien atteint.');return 0
-    cards=render(selected,now)
+        status = 'Plafond quotidien atteint.' if state['daily']['count'] >= rss.MAX_DAILY_MESSAGES else 'Aucune nouvelle information ciblée éligible.'
+        print(status)
+        execution_summary(available, watchlist, state, status)
+        return 0
     content='**CAP INVESTISSEMENT · Le point à retenir**\nOuvre les images pour parcourir le briefing.\n'
     content+='\n'.join(f"{i}. {x['editorial']['scope']} · Source : <{x['link']}>" for i,x in enumerate(selected,1))
-    if len(content)>2000:raise rss.PublishError('Liens trop longs pour le briefing ; aucun envoi effectué.')
-    result=rss.discord_post(endpoint,content,files=cards)
+    try:
+        cards=render(selected,now)
+        if len(content)>2000:raise rss.PublishError('Liens trop longs pour le briefing ; aucun envoi effectué.')
+        result=rss.discord_post(endpoint,content,files=cards)
+    except Exception:
+        execution_summary(available, watchlist, state, 'Échec du rendu ou de la publication : livraison non confirmée.')
+        raise
     # Only receipt-confirmed messages advance the queue and daily counter.
     state['daily']['count']+=len(selected)
     for x in selected:
@@ -62,5 +91,6 @@ def publish_briefing(available,state,endpoint,now):
         state['headline_keys'][x['title_key']]=now.isoformat()
     state['headline_keys']=dict(sorted(state['headline_keys'].items(),key=lambda kv:kv[1],reverse=True)[:10000])
     rss.save_state(state)
+    execution_summary(available, watchlist, state, 'Publication confirmée par Discord.', len(selected), len(cards))
     print(f"Carrousel confirmé par Discord : message {result['id']} · salon {result.get('channel_id')} · {len(cards)} images · {len(selected)} informations.")
     return len(selected)
