@@ -34,8 +34,8 @@ class ServerSetupTests(unittest.TestCase):
         self.assertEqual(self.api.writes,[])
     def test_apply_is_repeatable_and_keeps_existing_ids_permissions(self):
         setup(self.api,'123',self.config,True)
-        self.assertEqual(len(self.api.channels),9)
-        self.assertEqual(len(self.api.messages),5)
+        self.assertEqual(len(self.api.channels),10)
+        self.assertEqual(len(self.api.messages),6)
         self.assertEqual(next(c for c in self.api.channels if c['id']=='11')['name'],'🌍・actualités-marchés')
         self.assertEqual(self.api.channels[0]['permission_overwrites'],[{'id':'private','deny':'1024'}])
         self.api.writes=[]
@@ -64,3 +64,18 @@ class ServerSetupTests(unittest.TestCase):
         setup(self.api,'123',self.config,True)
         self.assertNotIn('description',self.api.messages['10']['foreign']['embeds'][0])
         self.assertEqual(len(self.api.messages['10']),2)
+
+    def test_legacy_footer_migrates_in_place(self):
+        setup(self.api,'123',self.config,True)
+        original_ids={cid:list(msgs) for cid,msgs in self.api.messages.items()}
+        for spec in self.config['channels']:
+            if not spec.get('message'):continue
+            for msgs in self.api.messages.values():
+                for msg in msgs.values():
+                    if msg['embeds'][0]['title']==spec['title']:
+                        msg['embeds'][0]['footer']['text']='CAP SETUP · '+spec['key']
+        self.api.writes=[]
+        setup(self.api,'123',self.config,True)
+        self.assertEqual(original_ids,{cid:list(msgs) for cid,msgs in self.api.messages.items()})
+        self.assertFalse(any(method=='POST' for method,_,_ in self.api.writes))
+        self.assertTrue(all(m['embeds'][0]['footer']['text'].startswith('CAP Investissement') for ms in self.api.messages.values() for m in ms.values()))

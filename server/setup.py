@@ -59,7 +59,7 @@ def own_message(api,channel_id,bot_id,marker):
     for _ in range(100):
         page=api.call('GET',f'/channels/{channel_id}/messages?limit=100'+before)
         for message in page:
-            if message['author']['id']==bot_id and any(e.get('footer',{}).get('text')==marker for e in message.get('embeds',[])):
+            if message['author']['id']==bot_id and any(e.get('footer',{}).get('text')in marker for e in message.get('embeds',[])):
                 return message
         if len(page)<100:return None
         before='&before='+page[-1]['id']
@@ -95,12 +95,12 @@ def setup(api,guild_id,config,apply=False):
         ids[spec['key']]=cid
         if spec.get('message'):
             marker='CAP SETUP · '+spec['key']
-            message=None if cid.startswith('preview-') else own_message(api,cid,bot['id'],marker)
-            payload={'embeds':[{'title':spec['title'],'description':spec['message'],'color':0x102C25,'footer':{'text':marker}}],'allowed_mentions':{'parse':[]}}
+            message=None if cid.startswith('preview-') else own_message(api,cid,bot['id'],(marker,spec.get('footer',marker)))
+            payload={'embeds':[{'title':spec['title'],'description':spec['message'],'color':0x102C25,'footer':{'text':spec.get('footer',marker)}}],'allowed_mentions':{'parse':[]}}
             if not apply:
                 actions.append('Vérifier le message épinglé : '+spec['name']);continue
             if message:
-                if message.get('embeds',[{}])[0].get('description')!=spec['message'] or message['embeds'][0].get('title')!=spec['title']:
+                if message['embeds'][0].get('footer',{}).get('text')!=spec.get('footer',marker) or message.get('embeds',[{}])[0].get('description')!=spec['message'] or message['embeds'][0].get('title')!=spec['title']:
                     api.call('PATCH',f'/channels/{cid}/messages/{message["id"]}',payload)
             else:
                 payload.update(nonce=hashlib.sha256((guild_id+marker).encode()).hexdigest()[:24],enforce_nonce=True)

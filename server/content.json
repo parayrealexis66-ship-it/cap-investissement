@@ -26,7 +26,8 @@
       "parent": "welcome",
       "topic": "Bienvenue, présentation et premiers pas dans Cap Investissement.",
       "title": "Bienvenue sur Cap Investissement 👋",
-      "message": "**Bienvenue sur Cap Investissement 👋**\n\nMoi, c’est Alexis. J’ai créé cet espace pour vous accompagner dans la compréhension de la Bourse et vous aider à progresser avec méthode.\n\nVous trouverez ici mes analyses d’entreprises, mes convictions et une sélection d’actualités importantes. Nous prendrons aussi le temps d’échanger sur vos questions et votre manière d’aborder l’investissement.\n\n**Pour commencer**, présentez-vous dans 💬・échanges : votre expérience, ce que vous souhaitez apprendre et ce qui vous semble difficile aujourd’hui. Pas besoin de partager vos montants ou vos informations personnelles.\n\nDébutant ou déjà investi, vous pouvez poser vos questions simplement. L’objectif est de comprendre davantage et de gagner progressivement en autonomie.\n\n**Quelques repères :** échanges respectueux, sources identifiables, aucun démarchage ni spam. Les documents et entretiens individuels restent privés. Le flux CAP · Actualités est automatisé ; mes interventions personnelles sont signées avec mon profil Alexis.\n\n**Nos règles**\n- Respect des personnes et des avis ; on discute des arguments.\n- Pas de spam, de démarchage ni de liens d’affiliation non autorisés.\n- Citer la source et la date des informations partagées ; distinguer les faits des opinions.\n- Ne jamais publier d’identifiants, de codes, de coordonnées bancaires ou de documents personnels.\n- Se méfier des messages privés non sollicités et signaler toute usurpation d’identité à Alexis."
+      "message": "**Moi, c’est Alexis 👋**\nJ’ai créé CAP Investissement pour vous aider à comprendre la Bourse et progresser avec méthode.\n\n**Ce que tu trouveras ici**\nDes analyses d’entreprises, des actualités sélectionnées et des repères pour comprendre les enveloppes et le risque.\n\n**Par où commencer**\n1. Consulte 📚・repères-investisseur.\n2. Présente-toi dans 💬・échanges : ton expérience, ce que tu souhaites apprendre et ta difficulté du moment.\n3. Découvre 🔎・analyses-entreprises et pose tes questions.\n\n**Comment participer**\nOn discute des arguments avec respect, en distinguant faits et opinions. Ajoute une source et une date aux informations partagées. Aucun spam, démarchage ou lien d’affiliation non autorisé.\n\nTes documents, montants et entretiens individuels restent privés. Ne partage jamais de codes ou d’identifiants. Signale à Alexis les messages privés suspects.\nLe flux d’actualités est automatisé ; mes commentaires personnels sont publiés depuis mon profil Alexis.",
+      "footer": "CAP Investissement · Bienvenue sur Cap Investissement"
     },
     {
       "key": "announcements",
@@ -38,7 +39,8 @@
       "parent": "welcome",
       "topic": "Les nouvelles de Cap Investissement : fonctionnement du serveur, contenus disponibles et évolutions de l’accompagnement.",
       "title": "Annonces",
-      "message": "**Les nouvelles de Cap Investissement**\nJe partagerai ici les évolutions du serveur et les nouveaux contenus. Pour les questions et discussions, rendez-vous dans 💬・échanges afin de garder ce salon facile à consulter.\n— Alexis"
+      "message": "**Les nouvelles de Cap Investissement**\nJe partagerai ici les évolutions du serveur et les nouveaux contenus. Pour les questions et discussions, rendez-vous dans 💬・échanges afin de garder ce salon facile à consulter.\n— Alexis",
+      "footer": "CAP Investissement · Annonces"
     },
     {
       "key": "chat",
@@ -52,7 +54,8 @@
       "parent": "invest",
       "topic": "Questions, présentations et discussions autour de l’investissement. Tous les niveaux sont bienvenus ; gardez vos données personnelles et documents financiers privés.",
       "title": "Échanges",
-      "message": "**On fait connaissance ? 👋**\nPrésente-toi en quelques lignes : ton expérience en Bourse, ce que tu souhaites comprendre et ta principale difficulté aujourd’hui. Aucune obligation de dévoiler ton portefeuille ou tes montants.\nUne question simple est toujours une bonne question. Pour discuter d’une actualité, ajoute sa source et explique ce qui t’interpelle."
+      "message": "**On fait connaissance ? 👋**\nPrésente-toi en quelques lignes : ton expérience en Bourse, ce que tu souhaites comprendre et ta principale difficulté aujourd’hui. Aucune obligation de dévoiler ton portefeuille ou tes montants.\nUne question simple est toujours une bonne question. Pour discuter d’une actualité, ajoute sa source et explique ce qui t’interpelle.",
+      "footer": "CAP Investissement · Échanges"
     },
     {
       "key": "analysis",
@@ -64,7 +67,8 @@
       "parent": "invest",
       "topic": "Comprendre les entreprises : activité, résultats, perspectives, valorisation et risques. Les convictions sont expliquées, les incertitudes aussi.",
       "title": "Analyses entreprises",
-      "message": "**Comprendre avant de se positionner 🔎**\nDans ce salon, je partagerai mes analyses d’entreprises et le suivi de mes convictions : leur activité, leurs résultats, leurs perspectives et les risques que je surveille.\nChaque analyse sera datée et accompagnée de ses sources. Je distinguerai les faits publiés, mon interprétation et les points encore incertains. Quand je détiens une position dans l’entreprise analysée, je le préciserai.\nUne conviction peut évoluer : les mises à jour auront autant de place que l’analyse initiale. Ces échanges servent à développer votre compréhension, sans promesse de performance.\n— Alexis"
+      "message": "**Ce que tu trouveras ici**\nMes analyses et le suivi de mes convictions, avec leurs risques et leurs incertitudes.\n\n**Notre trame de lecture**\n1. Activité : comment l’entreprise gagne-t-elle de l’argent ?\n2. Conviction : trois arguments vérifiables, avec leurs sources.\n3. Valorisation : quelles attentes le prix intègre-t-il déjà ?\n4. Risques : qu’est-ce qui invaliderait l’analyse ?\n5. Suivi : quel prochain résultat ou événement surveiller ?\n6. Transparence : date, sources et position personnelle éventuelle.\n\n**Comment participer**\nPose une question précise ou apporte une donnée sourcée dans 💬・échanges. Une opinion contraire argumentée est utile.\n\n**Par où commencer**\nPour ta prochaine lecture, identifie un argument favorable et un risque. Une bonne entreprise n’est pas nécessairement un bon investissement à n’importe quel prix.\nLes analyses à venir suivront cette trame ; les mises à jour compteront autant que la conviction initiale.\n— Alexis",
+      "footer": "CAP Investissement · Analyses entreprises"
     },
     {
       "key": "news",
@@ -78,7 +82,21 @@
       "parent": "invest",
       "topic": "Une sélection automatique d’actualités, avec date et source. Le flux peut rester silencieux quand aucune nouvelle ne correspond aux critères.",
       "title": "Actualités marchés",
-      "message": "**Comment lire ce fil 🌍**\nCAP · Actualités sélectionne automatiquement des titres et les présente sous forme de cartes. Chaque publication renvoie à la source ; les titres peuvent être en anglais.\nUne anticipation de taux n’est pas une décision officielle. Un article sur un risque de crise n’annonce pas forcément une crise avérée. Les encadrés de lecture donnent des repères généraux, pas une analyse complète de l’article.\nJe pourrai compléter certains sujets avec mon propre commentaire, publié depuis mon profil Alexis. Les questions et réactions sont bienvenues dans 💬・échanges."
+      "message": "**Comment lire ce fil 🌍**\nCAP · Actualités sélectionne automatiquement des titres et les présente sous forme de cartes. Chaque publication renvoie à la source ; les titres peuvent être en anglais.\nUne anticipation de taux n’est pas une décision officielle. Un article sur un risque de crise n’annonce pas forcément une crise avérée. Les encadrés de lecture donnent des repères généraux, pas une analyse complète de l’article.\nJe pourrai compléter certains sujets avec mon propre commentaire, publié depuis mon profil Alexis. Les questions et réactions sont bienvenues dans 💬・échanges.\n\n**Pour approfondir une actualité**\nQuel est le fait confirmé ? Quelle entreprise est concernée ? Par quel mécanisme ses revenus, ses coûts ou son financement pourraient-ils être touchés ? Qu’est-ce qui reste incertain ?\nCe sont les questions de nos décryptages ; les cartes automatiques ne répondent pas à elles seules à tout cela.",
+      "footer": "CAP Investissement · Actualités marchés"
+    },
+    {
+      "key": "learning",
+      "name": "📚・repères-investisseur",
+      "aliases": [
+        "repères-investisseur"
+      ],
+      "type": 0,
+      "parent": "invest",
+      "topic": "PEA, CTO, gains et risque : les bases pour progresser. Fiches datées, sources officielles et questions dans échanges.",
+      "title": "Premiers repères · PEA et CTO",
+      "message": "**Pour qui ?**\nParticuliers résidents fiscaux français, gestion courante de titres cotés. Repères vérifiés le 14 novembre 2026 ; les situations particulières demandent une vérification dédiée.\n\n**1 · L’enveloppe et l’investissement**\nLe PEA et le CTO sont des comptes qui accueillent des investissements. L’enveloppe ne garantit ni le capital ni le rendement. Vérifie l’éligibilité d’un titre avant de vouloir le loger dans un PEA.\n\n**2 · Vendre n’est pas retirer**\nDans un PEA, vendre un titre et conserver les espèces dans le plan n’est pas un retrait. En règle générale, un retrait avant cinq ans entraîne une imposition des gains et la clôture, avec des exceptions. Après cinq ans, les gains sont exonérés d’impôt sur le revenu, mais les prélèvements sociaux restent dus. Les cinq ans courent à partir du premier versement.\nSur CTO, une vente avec plus-value peut être imposable même si l’argent reste chez le courtier. Les dividendes relèvent aussi de règles fiscales propres.\n\n**3 · Latent ou réalisé ?**\nExemple simplifié, hors frais : tu achètes pour 1 000 €. La position vaut 1 200 € : le gain de 200 € est latent. Tu vends tout pour 1 200 € : il devient réalisé. Le traitement fiscal dépend ensuite de l’enveloppe et de ta situation.\nUne moins-value réalisée sur CTO peut compenser des plus-values imposables de même nature. L’excédent est reportable sur les dix années suivantes ; ce n’est pas une déduction de ton salaire.\n\n**4 · À conserver**\nHistorique des transactions, frais, relevés et documents fiscaux du courtier. Vérifie les montants préremplis : un document fourni ne dispense pas de contrôle.\n\n**À toi de jouer**\nUne action est vendue avec un gain, mais l’argent reste sur le compte : est-ce un retrait ? Qu’est-ce qui change entre PEA et CTO ? Partage ton raisonnement dans 💬・échanges, sans document personnel.\n\n**Sources officielles**\n[PEA : fonctionnement](https://www.service-public.gouv.fr/particuliers/vosdroits/F2385)\n[PEA : fiscalité et exceptions](https://www.service-public.gouv.fr/particuliers/vosdroits/F22449)\n[CTO : revenus et plus-values](https://www.impots.gouv.fr/particulier/revenus-de-capitaux-mobiliers)\n[Moins-values : règles de report](https://www.impots.gouv.fr/particulier/questions/j-ai-realise-une-moins-value-mobiliere-comment-est-elle-prise-en-compte)",
+      "footer": "CAP Investissement · Premiers repères · PEA et CTO"
     },
     {
       "key": "talk",
