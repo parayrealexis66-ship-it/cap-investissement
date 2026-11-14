@@ -99,6 +99,26 @@
       "footer": "CAP Investissement · Premiers repères · PEA et CTO"
     },
     {
+      "key": "press",
+      "name": "📰・presse-et-actu",
+      "type": 0,
+      "parent": "invest",
+      "title": "Presse et actualité",
+      "topic": "Lectures de la semaine : liens officiels, commentaires personnels et documents dont le partage est autorisé.",
+      "message": "**Les lectures de la semaine**\nPartage ici des liens vers les articles et éditions officielles, tes synthèses personnelles et les documents dont tu disposes des droits de diffusion.\n\n**Format proposé**\n• Média, titre et date.\n• Lien vers la source officielle, en précisant si elle est payante.\n• Les points que tu retiens, reformulés avec tes propres mots.\n• Pourquoi le sujet mérite notre attention.\n\nLes journaux complets et copies d’articles ne sont pas à republier sans autorisation. Ce salon complète le fil automatique d’actualités par une sélection commentée.",
+      "footer": "CAP Investissement · Presse et actualité"
+    },
+    {
+      "key": "purchases",
+      "name": "📌・mes-achats",
+      "type": 0,
+      "parent": "invest",
+      "title": "Mes achats et convictions",
+      "topic": "Journal des opérations personnelles d’Alexis : achats, renforcements, ventes et idées à l’étude, avec contexte et risques.",
+      "message": "**Mon journal d’investissement**\nJe partage ici mes opérations personnelles et les idées que j’étudie, en précisant leur statut : achat réalisé, renforcement, vente ou simple surveillance.\n\n**Pour chaque publication**\n• Entreprise, ticker et date.\n• Opération réalisée ou idée à l’étude.\n• Prix exécuté et devise si l’opération est réalisée ; cours observé et date sinon.\n• Raisons de la décision et horizon envisagé.\n• Principaux risques et éléments qui me feraient revoir mon analyse.\n• Position déjà détenue et éventuel conflit d’intérêts.\n\nUne idée à l’étude n’est pas un achat réalisé. Je publierai les changements de conviction et les erreurs, pas seulement les réussites. Les décisions présentées concernent mon propre portefeuille ; chacun doit apprécier ses contraintes et les risques.\nPour approfondir, retrouve l’analyse dans 🔎・analyses-entreprises et les échanges dans 💬・échanges.\n— Alexis",
+      "footer": "CAP Investissement · Mes achats et convictions"
+    },
+    {
       "key": "talk",
       "name": "🎙️・discussion",
       "aliases": [

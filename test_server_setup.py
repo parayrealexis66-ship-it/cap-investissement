@@ -34,8 +34,8 @@ class ServerSetupTests(unittest.TestCase):
         self.assertEqual(self.api.writes,[])
     def test_apply_is_repeatable_and_keeps_existing_ids_permissions(self):
         setup(self.api,'123',self.config,True)
-        self.assertEqual(len(self.api.channels),10)
-        self.assertEqual(len(self.api.messages),6)
+        self.assertEqual(len(self.api.channels),12)
+        self.assertEqual(len(self.api.messages),8)
         self.assertEqual(next(c for c in self.api.channels if c['id']=='11')['name'],'🌍・actualités-marchés')
         self.assertEqual(self.api.channels[0]['permission_overwrites'],[{'id':'private','deny':'1024'}])
         self.api.writes=[]
