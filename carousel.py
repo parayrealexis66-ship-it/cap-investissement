@@ -58,12 +58,15 @@ def render(items,now):
         e=item['editorial']
         paragraph(d,e['topic'],150,32,True,color=GOLD if e['kind']=='macro' else GREEN,max_lines=2)
         paragraph(d,e['scope'],240,36,True,max_lines=2)
-        paragraph(d,item['title'],360,58,True,max_lines=5)
-        d.rounded_rectangle((60,775,1020,950),radius=20,fill='#1E3E33')
-        d.text((80,795),'POUR PRENDRE DU RECUL',font=font(22,True),fill=GREEN)
-        paragraph(d,e['note'],835,28,max_lines=3)
+        paragraph(d,item['title'],325,54,True,max_lines=5)
+        if item.get('summary') and item['summary'] != item['title']:
+            d.text((80,690),'EXTRAIT DU FLUX RSS',font=font(20,True),fill=GREEN)
+            paragraph(d,item['summary'],720,24,max_lines=3)
+        d.rounded_rectangle((60,835,1020,975),radius=20,fill='#1E3E33')
+        d.text((80,850),'À SURVEILLER',font=font(22,True),fill=GREEN)
+        paragraph(d,e['note'],882,24,max_lines=3)
         published=item['published'].astimezone(ZoneInfo('Europe/Paris')).strftime('%d/%m/%Y • %H:%M Paris')
-        paragraph(d,item['source'],970,22,color=MUTED,max_lines=1)
-        d.text((80,1010),published,font=font(22),fill=MUTED)
+        paragraph(d,item['source'],985,22,color=MUTED,max_lines=1)
+        d.text((80,1023),published,font=font(22),fill=MUTED)
         cards.append((f'{i:02}-actualite.png',encode(im),item['title'][:1000]))
     return cards

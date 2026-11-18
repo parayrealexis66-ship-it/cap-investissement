@@ -4,6 +4,7 @@ import re
 import os
 from editorial import classify, normalized, watchlist_from_env
 from carousel import render
+from translation import french_items
 import rss_to_discord as rss
 
 
@@ -67,7 +68,10 @@ def select(available,state,now,watchlist):
 def publish_briefing(available,state,endpoint,now):
     watchlist=watchlist_from_env()
     if not watchlist:print('::warning::WATCHLIST absent : seules les grandes actualités macro sont sélectionnées.')
-    selected=select(available,state,now,watchlist)
+    eligible = available
+    if not os.environ.get('DEEPL_API_KEY', '').strip():
+        eligible = [(feed, french_items(entries)) for feed, entries in available]
+    selected = french_items(select(eligible, state, now, watchlist))
     rss.save_state(state)
     if not selected:
         status = 'Plafond quotidien atteint.' if state['daily']['count'] >= rss.MAX_DAILY_MESSAGES else 'Aucune nouvelle information ciblée éligible.'
@@ -78,7 +82,8 @@ def publish_briefing(available,state,endpoint,now):
         return re.sub(r'([\\`*_{}\[\]()<>~|])', r'\\\1', value.replace('\n',' '))[:limit]
     content='\n\n'.join(
         f"**{safe_text(x['title'], 240)}**\n"
-        f"{x['editorial']['topic']} · [Lire la source](<{x['link']}>)"
+        f"{x['editorial']['topic']} · {safe_text(x['source'], 80)} · "
+        f"<t:{int(x['published'].timestamp())}:t> · [Lire la source](<{x['link']}>)"
         for x in selected)
     try:
         cards=render(selected,now)
