@@ -12,6 +12,7 @@ on:
       - 'briefing.py'
       - 'editorial.py'
       - 'carousel.py'
+      - 'translation.py'
       - 'test_briefing.py'
       - 'requirements.txt'
   workflow_dispatch:
@@ -86,6 +87,7 @@ jobs:
         if: steps.webhook.outputs.ready == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           WATCHLIST: ${{ secrets.WATCHLIST }}
         run: python rss_to_discord.py
 

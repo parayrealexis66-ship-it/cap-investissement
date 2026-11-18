@@ -19,7 +19,10 @@ def contains(text, alias):
 
 def classify(item, watchlist):
     t=normalized(item['title'])
-    matches=[names[0] for names in watchlist if any(contains(t,name) for name in names)]
+    context = normalized(item['title'] + ' ' + item.get('summary', ''))
+    matches = [names[0] for names in watchlist if names and any(
+        contains(t if len(name) <= 4 else context, name) for name in names
+    )]
     if matches:
         if re.search(r'resultat|earnings|guidance|prevision|benefice|revenue|chiffre d.affaires',t):
             topic='RÉSULTATS'; note='À vérifier dans la publication : croissance, marges et perspectives annoncées.'
