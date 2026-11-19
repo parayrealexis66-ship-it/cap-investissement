@@ -1,18 +1,32 @@
 [
   {
     "name": "BCE — communiqués et discours",
-    "url": "https://www.ecb.europa.eu/rss/press.html"
+    "url": "https://www.ecb.europa.eu/rss/press.html",
+    "language": "en"
   },
   {
     "name": "Federal Reserve — politique monétaire",
-    "url": "https://www.federalreserve.gov/feeds/press_monetary.xml"
+    "url": "https://www.federalreserve.gov/feeds/press_monetary.xml",
+    "language": "en"
   },
   {
     "name": "CNBC — marchés et entreprises (anglais)",
-    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114"
+    "url": "https://search.cnbc.com/rs/search/combinedcms/view.xml?partnerId=wrss01&id=100003114",
+    "language": "en"
   },
   {
     "name": "Le Monde — économie (français)",
-    "url": "https://www.lemonde.fr/economie/rss_full.xml"
+    "url": "https://www.lemonde.fr/economie/rss_full.xml",
+    "language": "fr"
+  },
+  {
+    "name": "Google Actualités · entreprises (fr)",
+    "url": "https://news.google.com/rss/search?q=Robinhood%20OR%20Eramet&hl=fr&gl=FR&ceid=FR:fr",
+    "language": "fr"
+  },
+  {
+    "name": "Google Actualités · entreprises (en)",
+    "url": "https://news.google.com/rss/search?q=%22Robinhood%20Markets%22%20OR%20Eramet&hl=en-US&gl=US&ceid=US:en",
+    "language": "en"
   }
 ]
