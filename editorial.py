@@ -10,7 +10,7 @@ def normalized(text):
 
 def watchlist_from_env():
     # One company per line; aliases on the same line separated by |.
-    return [tuple(x.strip() for x in line.split('|') if x.strip()) for line in os.environ.get('WATCHLIST', '').splitlines() if line.strip()]
+    return [('Robinhood', 'Robinhood Markets'), ('Eramet',)] + [tuple(x.strip() for x in line.split('|') if x.strip()) for line in os.environ.get('WATCHLIST', '').splitlines() if line.strip()]
 
 
 def contains(text, alias):
@@ -19,7 +19,10 @@ def contains(text, alias):
 
 def classify(item, watchlist):
     t=normalized(item['title'])
-    matches=[names[0] for names in watchlist if any(contains(t,name) for name in names)]
+    context = normalized(item['title'] + ' ' + item.get('summary', ''))
+    matches = [names[0] for names in watchlist if names and any(
+        contains(t if len(name) <= 4 else context, name) for name in names
+    )]
     if matches:
         if re.search(r'resultat|earnings|guidance|prevision|benefice|revenue|chiffre d.affaires',t):
             topic='RÉSULTATS'; note='À vérifier dans la publication : croissance, marges et perspectives annoncées.'

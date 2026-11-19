@@ -9,6 +9,7 @@ on:
       - 'feeds.json'
       - 'state_store.py'
       - 'test_rss_to_discord.py'
+      - 'translation.py'
       - 'briefing.py'
       - 'editorial.py'
       - 'carousel.py'
@@ -86,6 +87,7 @@ jobs:
         if: steps.webhook.outputs.ready == 'true'
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           WATCHLIST: ${{ secrets.WATCHLIST }}
         run: python rss_to_discord.py
 
