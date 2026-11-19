@@ -108,7 +108,7 @@ def parse_feed(xml_bytes, feed_name):
         published = parse_date(child_text(element, ("pubdate", "published", "date", "updated")))
         if title and link:
             results.append({"id": guid, "title": title, "link": link,
-                            "published": published, "source": feed_name})
+                            "published": published, "source": feed_name, "summary": child_text(element, ("description", "summary"))})
     return results
 
 
@@ -122,7 +122,7 @@ def fetch_feed(feed):
             raw = response.read(5_000_001)
         if len(raw) > 5_000_000:
             raise FeedError("Flux trop volumineux")
-        return parse_feed(raw, feed["name"])
+        return [dict(item, language=feed.get("language", "fr")) for item in parse_feed(raw, feed["name"])]
     except urllib.error.HTTPError as exc:
         raise FeedError(f"HTTP {exc.code}") from None
     except (urllib.error.URLError, OSError, ET.ParseError) as exc:
