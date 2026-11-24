@@ -1,0 +1,20 @@
+name: Installer le salon psychologie
+on:
+  push:
+    branches: [main]
+    paths: ['server/psychology.py']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: cap-discord-installation
+jobs:
+  channel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - run: python server/psychology.py
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          ARTICLE_PSYCHOLOGIE: ${{ secrets.ARTICLE_PSYCHOLOGIE }}
