@@ -89,6 +89,7 @@ jobs:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           DEEPL_API_KEY: ${{ secrets.DEEPL_API_KEY }}
           WATCHLIST: ${{ secrets.WATCHLIST }}
+          WATCHLIST_EXTRA: ${{ secrets.WATCHLIST_EXTRA }}
         run: python rss_to_discord.py
 
       - name: Conserver les envois confirmés

@@ -279,6 +279,18 @@ def write_summary(lines):
             stream.write("\n".join(lines) + "\n")
 
 
+def tracked_search(feed):
+    from editorial import watchlist_from_env
+    parts = urllib.parse.urlsplit(feed["url"])
+    if (parts.hostname, parts.path) != ("news.google.com", "/rss/search"):
+        return feed
+    names = dict.fromkeys(group[0] for group in watchlist_from_env() if group)
+    params = dict(urllib.parse.parse_qsl(parts.query))
+    params["q"] = " OR ".join('"' + name.replace('"', '') + '"' for name in names)
+    url = parts._replace(query=urllib.parse.urlencode(params)).geturl()
+    return {**feed, "url": url, "state_key": feed["url"]}
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser()
     parser.add_argument("--check", action="store_true", help="Vérifier les sources sans publier ni modifier le suivi")
@@ -294,6 +306,7 @@ def main(argv=None):
     available, failures = [], []
     for feed in feeds:
         try:
+            feed = tracked_search(feed)
             entries = fetch_feed(feed)
             available.append((feed, entries))
             print(f"Source disponible : {feed['name']} — {len(entries)} éléments.")

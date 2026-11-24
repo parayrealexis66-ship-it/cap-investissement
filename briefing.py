@@ -37,7 +37,8 @@ def select(available,state,now,watchlist):
     titles=state.setdefault('headline_keys',{})
     candidates=[]
     for feed,entries in available:
-        f=state['feeds'].setdefault(feed['url'],{'initialized':False,'seen':{}})
+        feed_key = feed.get('state_key', feed['url'])
+        f=state['feeds'].setdefault(feed_key,{'initialized':False,'seen':{}})
         for item in entries:
             published=item['published']
             if item['id'] in f['seen']:continue
@@ -50,7 +51,7 @@ def select(available,state,now,watchlist):
             title_key=hashlib.sha256(re.sub(r'\W+','',normalized(item['title'])).encode()).hexdigest()
             if key in articles or title_key in titles:
                 f['seen'][item['id']]=now.isoformat();continue
-            candidates.append({**item,'editorial':edit,'feed_url':feed['url'],'key':key,'title_key':title_key})
+            candidates.append({**item,'editorial':edit,'feed_url':feed_key,'key':key,'title_key':title_key})
         f['initialized']=True
     candidates.sort(key=lambda x:(x['editorial']['priority'],-x['published'].timestamp()))
     selected=[];seen_links=set();seen_titles=set();macro=0;scopes=set()

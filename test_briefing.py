@@ -18,6 +18,24 @@ class BriefingTests(unittest.TestCase):
         self.watch=[('Entreprise Exemple','Example Inc')]
     def item(self,title,key='a'):
         return {'title':title,'id':key,'link':'https://example.org/'+key,'source':'Source test','published':self.now-timedelta(hours=1)}
+    def test_private_follow_and_removal_update_search_and_selection(self):
+        from editorial import watchlist_from_env
+        from urllib.parse import parse_qs, urlsplit
+        feed = {'name': 'Recherche', 'url': 'https://news.google.com/rss/search?q=public&hl=fr'}
+        item = self.item('Essai Média annonce ses résultats')
+        for active in (True, False):
+            extra = 'Essai Média|Exemple Inc' if active else ''
+            with patch.dict('os.environ', {'WATCHLIST': 'Exemple Durable', 'WATCHLIST_EXTRA': extra}):
+                query = rss.tracked_search(feed)
+                terms = parse_qs(urlsplit(query['url']).query)['q'][0]
+                self.assertEqual('Essai Média' in terms, active)
+                self.assertIn('Exemple Durable', terms)
+                hits = select([(query, [item])], self.state, self.now, watchlist_from_env())
+                self.assertEqual(bool(hits), active)
+                self.assertEqual(set(self.state['feeds']), {feed['url']})
+                if active:
+                    self.assertEqual(hits[0]['feed_url'], feed['url'])
+
     def test_company_is_selected_and_unrelated_items_are_rejected(self):
         self.assertEqual(classify(self.item('Example Inc annonce ses résultats'),self.watch)['kind'],'company')
         self.assertIsNone(classify(self.item('Les voitures électriques coûtent cher à assurer'),self.watch))

@@ -10,7 +10,7 @@ def normalized(text):
 
 def watchlist_from_env():
     # One company per line; aliases on the same line separated by |.
-    return [('Robinhood', 'Robinhood Markets'), ('Eramet',)] + [tuple(x.strip() for x in line.split('|') if x.strip()) for line in os.environ.get('WATCHLIST', '').splitlines() if line.strip()]
+    return [('Robinhood', 'Robinhood Markets'), ('Eramet',)] + [tuple(x.strip() for x in line.split('|') if x.strip()) for line in (os.environ.get('WATCHLIST', '') + '\n' + os.environ.get('WATCHLIST_EXTRA', '')).splitlines() if line.strip()]
 
 
 def contains(text, alias):
