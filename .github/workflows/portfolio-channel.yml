@@ -1,0 +1,21 @@
+name: Créer le salon portefeuille
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/portfolio-channel.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: cap-discord-installation
+jobs:
+  salon:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python server/portfolio_channel.py
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
