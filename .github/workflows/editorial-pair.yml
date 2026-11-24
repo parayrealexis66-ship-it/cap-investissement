@@ -1,0 +1,23 @@
+name: Publier les deux articles validés
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/editorial-pair.yml']
+permissions:
+  contents: read
+concurrency: cap-editorial-pair
+jobs:
+  publier:
+    if: github.event_name == 'workflow_dispatch' || github.event.head_commit.message == 'Publier les deux articles validés'
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python server/editorial_pair.py
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
+          EDITORIAL_PAIR: ${{ secrets.EDITORIAL_PAIR }}
