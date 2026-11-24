@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/portfolio-snapshot.yml']
+    paths: ['.github/workflows/portfolio-snapshot.yml', 'server/portfolio_send.py']
 permissions:
   contents: read
 concurrency: cap-portefeuille

@@ -44,7 +44,12 @@ def publish():
         with api.opener.open(req, timeout=30) as res:
             message = json.load(res)
     receipt = api.call('GET', path + '/' + message['id'])
-    if not any(a['filename'] == filename and a['size'] == len(png) for a in receipt['attachments']):
+    attached = any(a['filename'] == filename and a['size'] == len(png) for a in receipt['attachments'])
+    images = [embed.get('image', {}) for embed in receipt['embeds']]
+    embedded = any(image.get('width') == 860 and image.get('height') == 1040
+                   and image.get('url', '').split('?')[0].endswith('/' + filename)
+                   for image in images)
+    if not (attached or embedded):
         raise SetupError('Pièce jointe non confirmée')
     if not receipt.get('pinned'):
         api.call('PUT', path + '/pins/' + message['id'])
