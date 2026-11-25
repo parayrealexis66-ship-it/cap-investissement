@@ -36,6 +36,7 @@ def select(available,state,now,watchlist):
     articles=state.setdefault('articles',{})
     titles=state.setdefault('headline_keys',{})
     candidates=[]
+    read_feed_keys = set()
     for feed,entries in available:
         feed_key = feed.get('state_key', feed['url'])
         f=state['feeds'].setdefault(feed_key,{'initialized':False,'seen':{}})
@@ -52,7 +53,9 @@ def select(available,state,now,watchlist):
             if key in articles or title_key in titles:
                 f['seen'][item['id']]=now.isoformat();continue
             candidates.append({**item,'editorial':edit,'feed_url':feed_key,'key':key,'title_key':title_key})
-        f['initialized']=True
+        read_feed_keys.add(feed_key)
+    for feed_key in read_feed_keys:
+        state['feeds'][feed_key]['initialized'] = True
     candidates.sort(key=lambda x:(x['editorial']['priority'],-x['published'].timestamp()))
     selected=[];seen_links=set();seen_titles=set();macro=0;scopes=set()
     for item in candidates:
@@ -60,8 +63,9 @@ def select(available,state,now,watchlist):
         if len(selected)>=min(3,max(0,rss.MAX_DAILY_MESSAGES-daily['count'])):break
         if item['key'] in seen_links or item['title_key'] in seen_titles:continue
         if e['kind']=='macro' and macro>=1:continue
-        if e['kind']=='company' and e['scope'] in scopes:continue
-        selected.append(item);seen_links.add(item['key']);seen_titles.add(item['title_key']);scopes.add(e['scope'])
+        companies = set(e['scope'].split(' / ')) if e['kind'] == 'company' else set()
+        if companies & scopes:continue
+        selected.append(item);seen_links.add(item['key']);seen_titles.add(item['title_key']);scopes.update(companies)
         macro+=e['kind']=='macro'
     return selected
 
