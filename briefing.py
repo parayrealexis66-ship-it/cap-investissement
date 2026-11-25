@@ -84,7 +84,7 @@ def publish_briefing(available,state,endpoint,now):
     content='\n\n'.join(
         f"**{safe_text(x['title'], 240)}**\n"
         f"{x['editorial']['topic']} · {safe_text(x['source'], 80)} · "
-        f"<t:{int(x['published'].timestamp())}:t> · [Lire la source](<{x['link']}>)"
+        f"<t:{int(x['published'].timestamp())}:f> · [Lire la source](<{x['link']}>)"
         for x in selected)
     try:
         cards=render(selected,now)
