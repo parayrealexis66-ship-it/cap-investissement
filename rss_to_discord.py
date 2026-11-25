@@ -13,6 +13,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from html.parser import HTMLParser
 from pathlib import Path
@@ -279,16 +280,29 @@ def write_summary(lines):
             stream.write("\n".join(lines) + "\n")
 
 
-def tracked_search(feed):
+def tracked_searches(feed):
     from editorial import watchlist_from_env
+
     parts = urllib.parse.urlsplit(feed["url"])
     if (parts.hostname, parts.path) != ("news.google.com", "/rss/search"):
-        return feed
+        return [feed]
+
     names = dict.fromkeys(group[0] for group in watchlist_from_env() if group)
     params = dict(urllib.parse.parse_qsl(parts.query))
-    params["q"] = " OR ".join('"' + name.replace('"', '') + '"' for name in names)
-    url = parts._replace(query=urllib.parse.urlencode(params)).geturl()
-    return {**feed, "url": url, "state_key": feed["url"]}
+    searches = []
+    for name in names:
+        params["q"] = '"' + name.replace('"', '') + '"'
+        url = parts._replace(query=urllib.parse.urlencode(params)).geturl()
+        # Only the existing, public feed identifier is persisted in GitHub.
+        searches.append({**feed, "url": url, "state_key": feed["url"]})
+    return searches
+
+
+def read_source(feed):
+    try:
+        return fetch_feed(feed), None
+    except FeedError as exc:
+        return [], str(exc)
 
 
 def main(argv=None):
@@ -304,15 +318,15 @@ def main(argv=None):
             raise ValueError("Chaque source doit avoir un nom et une URL HTTPS")
     endpoint = None if args.check else webhook_endpoint(os.environ.get("DISCORD_WEBHOOK_URL", ""))
     available, failures = [], []
-    for feed in feeds:
-        try:
-            feed = tracked_search(feed)
-            entries = fetch_feed(feed)
+    searches = [search for feed in feeds for search in tracked_searches(feed)]
+    with ThreadPoolExecutor(max_workers=6) as pool:
+        for feed, (entries, failure) in zip(searches, pool.map(read_source, searches)):
+            if failure:
+                failures.append(feed["name"])
+                print(f"::warning::Source indisponible : {feed['name']} ({failure}).")
+                continue
             available.append((feed, entries))
             print(f"Source disponible : {feed['name']} — {len(entries)} éléments.")
-        except FeedError as exc:
-            failures.append(feed["name"])
-            print(f"::warning::Source indisponible : {feed['name']} ({exc}).")
     if not available:
         write_summary(["## Sources indisponibles", "Aucun flux n'a pu être lu ; aucune publication effectuée."])
         return 1
