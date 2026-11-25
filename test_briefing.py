@@ -117,5 +117,6 @@ class BriefingTests(unittest.TestCase):
             self.assertEqual(publish_briefing([(self.feed,[item])],self.state,'endpoint',self.now),1)
             content=post.call_args.args[1]
             self.assertIn(item['title'],content)
+            self.assertIn(f"<t:{int(item['published'].timestamp())}:f>", content)
             self.assertIn('[Lire la source](<https://example.org/a>)',content)
             self.assertNotIn('Ouvre les images',content)
