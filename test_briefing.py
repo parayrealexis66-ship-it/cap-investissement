@@ -26,15 +26,28 @@ class BriefingTests(unittest.TestCase):
         for active in (True, False):
             extra = 'Essai Média|Exemple Inc' if active else ''
             with patch.dict('os.environ', {'WATCHLIST': 'Exemple Durable', 'WATCHLIST_EXTRA': extra}):
-                query = rss.tracked_search(feed)
-                terms = parse_qs(urlsplit(query['url']).query)['q'][0]
-                self.assertEqual('Essai Média' in terms, active)
-                self.assertIn('Exemple Durable', terms)
-                hits = select([(query, [item])], self.state, self.now, watchlist_from_env())
+                queries = rss.tracked_searches(feed)
+                terms = [parse_qs(urlsplit(query['url']).query)['q'][0] for query in queries]
+                self.assertEqual('"Essai Média"' in terms, active)
+                self.assertIn('"Exemple Durable"', terms)
+                self.assertTrue(all(' OR ' not in term for term in terms))
+                hits = select([(query, [item]) for query in queries], self.state, self.now, watchlist_from_env())
                 self.assertEqual(bool(hits), active)
                 self.assertEqual(set(self.state['feeds']), {feed['url']})
                 if active:
                     self.assertEqual(hits[0]['feed_url'], feed['url'])
+
+    def test_shared_feed_keeps_first_run_window_for_each_company(self):
+        search = {**self.feed, 'state_key': self.feed['url']}
+        old = dict(self.item('Example Inc annonce ses résultats'), published=self.now-timedelta(hours=30))
+        self.assertEqual(select([(search, []), (search, [old])], self.state, self.now, self.watch), [])
+
+    def test_overlap_leaves_space_for_other_companies(self):
+        watch = [('Exemple Alpha',), ('Exemple Beta',), ('Exemple Gamma',)]
+        items = [self.item('Exemple Alpha et Exemple Beta annoncent leurs résultats', 'a'),
+                 self.item('Exemple Alpha annonce son acquisition', 'b'),
+                 self.item('Exemple Gamma annonce ses résultats', 'c')]
+        self.assertEqual([item['id'] for item in select([(self.feed, items)], self.state, self.now, watch)], ['a', 'c'])
 
     def test_company_is_selected_and_unrelated_items_are_rejected(self):
         self.assertEqual(classify(self.item('Example Inc annonce ses résultats'),self.watch)['kind'],'company')
