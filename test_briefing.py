@@ -101,6 +101,20 @@ class BriefingTests(unittest.TestCase):
             self.assertIn(('Exemple Beta', 'EXB'), watchlist_from_env())
             self.assertIn(('Exemple Delta',), watchlist_from_env())
 
+    def test_searches_alternate_language_and_prioritize_close(self):
+        base = 'https://news.google.com/rss/search?q=public'
+        feeds = [
+            {'url': base + '&hl=fr', 'language': 'fr'},
+            {'url': base + '&hl=en-US', 'language': 'en'},
+            {'url': base, 'language': 'fr', 'fixed_query': True, 'kind': 'close'},
+        ]
+        with patch('editorial.watchlist_from_env', return_value=[('Exemple SA',)]):
+            noon = list(rss.search_plan(feeds, self.now))
+            late = list(rss.search_plan(feeds, self.now.replace(hour=22, minute=45)))
+        self.assertEqual([feed['language'] for feed in noon], ['fr'])
+        self.assertEqual(late[0]['kind'], 'close')
+        self.assertEqual(late[1]['language'], 'en')
+
     def test_close_requires_a_current_confirmed_session_report_and_posts_once(self):
         now = self.now.replace(hour=22)
         report = dict(self.item('Wall Street termine en hausse'), published=now-timedelta(minutes=20))

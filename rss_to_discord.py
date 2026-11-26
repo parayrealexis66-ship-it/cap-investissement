@@ -303,6 +303,22 @@ def tracked_searches(feed):
     return searches
 
 
+def search_plan(feeds, now, check=False):
+    # Alternate company editions across scheduled passes. Broad feeds remain active.
+    language = 'fr' if now.minute < 30 else 'en'
+    prioritized = sorted(feeds, key=lambda feed: feed.get('kind') != 'close')
+    for feed in prioritized:
+        target = urllib.parse.urlsplit(feed['url'])
+        google = (target.hostname, target.path) == ('news.google.com', '/rss/search')
+        if not check and google and not feed.get('fixed_query') and feed.get('language') != language:
+            continue
+        if not check and feed.get('kind') == 'close':
+            local = now.astimezone(ZoneInfo('America/New_York'))
+            if local.weekday() >= 5 or local.hour < 16:
+                continue
+        yield from tracked_searches(feed)
+
+
 def read_source(feed):
     try:
         return fetch_feed(feed), None
@@ -323,8 +339,9 @@ def main(argv=None):
             raise ValueError("Chaque source doit avoir un nom et une URL HTTPS")
     endpoint = None if args.check else webhook_endpoint(os.environ.get("DISCORD_WEBHOOK_URL", ""))
     available, failures = [], []
-    searches = [search for feed in feeds for search in tracked_searches(feed)]
-    with ThreadPoolExecutor(max_workers=6) as pool:
+    now = datetime.now(UTC)
+    searches = list(search_plan(feeds, now, args.check))
+    with ThreadPoolExecutor(max_workers=2) as pool:
         for feed, (entries, failure) in zip(searches, pool.map(read_source, searches)):
             if failure:
                 failures.append(feed["name"])
