@@ -28,5 +28,19 @@
     "name": "Google Actualités · entreprises (en)",
     "url": "https://news.google.com/rss/search?q=%22Robinhood%20Markets%22%20OR%20Eramet&hl=en-US&gl=US&ceid=US:en",
     "language": "en"
+  },
+  {
+    "name": "Google Actualités · macro",
+    "url": "https://news.google.com/rss/search?q=%28Brent+OR+p%C3%A9trole+OR+OPEP+OR+p%C3%A9trolier+OR+inflation+OR+Fed+OR+BCE+OR+%22droits+de+douane%22+OR+%22accord+commercial%22%29+when%3A2d&hl=fr&gl=FR&ceid=FR%3Afr",
+    "language": "fr",
+    "fixed_query": true,
+    "kind": "macro"
+  },
+  {
+    "name": "Google Actualités · clôture américaine",
+    "url": "https://news.google.com/rss/search?q=%28%22Wall+Street+cl%C3%B4ture%22+OR+%22Wall+Street+termine%22+OR+%22Wall+Street+a+termin%C3%A9%22+OR+%22Wall+Street+finit%22+OR+%22Wall+Street+a+cl%C3%B4tur%C3%A9%22%29+when%3A1d&hl=fr&gl=FR&ceid=FR%3Afr",
+    "language": "fr",
+    "fixed_query": true,
+    "kind": "close"
   }
 ]

@@ -108,8 +108,13 @@ def parse_feed(xml_bytes, feed_name):
         guid = child_text(element, ("guid", "id")) or link
         published = parse_date(child_text(element, ("pubdate", "published", "date", "updated")))
         if title and link:
+            source = child_text(element, ("source",)) or feed_name
+            suffix = " - " + source
+            if title.endswith(suffix):
+                title = title[:-len(suffix)]
             results.append({"id": guid, "title": title, "link": link,
-                            "published": published, "source": feed_name, "summary": child_text(element, ("description", "summary"))})
+                            "published": published, "source": source,
+                            "summary": child_text(element, ("description", "summary"))})
     return results
 
 
@@ -284,7 +289,7 @@ def tracked_searches(feed):
     from editorial import watchlist_from_env
 
     parts = urllib.parse.urlsplit(feed["url"])
-    if (parts.hostname, parts.path) != ("news.google.com", "/rss/search"):
+    if feed.get("fixed_query") or (parts.hostname, parts.path) != ("news.google.com", "/rss/search"):
         return [feed]
 
     names = dict.fromkeys(group[0] for group in watchlist_from_env() if group)
@@ -331,17 +336,19 @@ def main(argv=None):
         write_summary(["## Sources indisponibles", "Aucun flux n'a pu être lu ; aucune publication effectuée."])
         return 1
     if args.check:
-        write_summary(["## Vérification des sources", f"{len(available)}/{len(feeds)} sources disponibles. Aucun message envoyé."])
+        write_summary(["## Vérification des sources", f"{len(available)}/{len(searches)} sources disponibles. Aucun message envoyé."])
         return 1 if failures else 0
     state = load_state()
     if not state.get("welcome_sent"):
         discord_post(endpoint, "✅ **Cap Investissement — flux connecté**\nLa connexion Discord est opérationnelle. Les nouveaux titres seront recherchés deux fois par heure.")
         state["welcome_sent"] = True
         save_state(state)
-    from briefing import publish_briefing
-    sent = publish_briefing(available, state, endpoint, datetime.now(UTC))
+    from briefing import publish_briefing, publish_close
+    now = datetime.now(UTC)
+    publish_close(available, state, endpoint, now)
+    sent = publish_briefing(available, state, endpoint, now)
     print(f"Publication terminée : {sent} actualité(s) envoyée(s).")
-    write_summary(["## Flux Discord opérationnel", f"{sent} actualité(s) envoyée(s) ; {len(available)}/{len(feeds)} sources disponibles.",
+    write_summary(["## Flux Discord opérationnel", f"{sent} actualité(s) envoyée(s) ; {len(available)}/{len(searches)} sources disponibles.",
                    f"Plafond : {MAX_DAILY_MESSAGES} actualités/jour (heure de Paris).",
                    "Contrôle prévu deux fois par heure (minutes 15 et 45), sous réserve des délais de GitHub."])
     return 1 if failures else 0

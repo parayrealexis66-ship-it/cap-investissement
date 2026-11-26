@@ -1,4 +1,5 @@
-from datetime import timedelta
+from datetime import time, timedelta
+from zoneinfo import ZoneInfo
 import hashlib
 import re
 import os
@@ -29,15 +30,26 @@ def execution_summary(available, watchlist, state, status, sent=0, images=0):
         output.write('\n'.join(lines) + '\n')
 
 
+def company_keys(editorial):
+    if editorial['kind'] != 'company':
+        return set()
+    return {hashlib.sha256(normalized(name).encode()).hexdigest()
+            for name in editorial['scope'].split(' / ')}
+
+
 def select(available,state,now,watchlist):
     day=now.astimezone(rss.PARIS).date().isoformat()
     daily=state.setdefault('daily',{'date':day,'count':0})
-    if daily['date']!=day:daily.update(date=day,count=0)
+    if daily['date'] != day:
+        daily.clear()
+        daily.update(date=day, count=0)
     articles=state.setdefault('articles',{})
     titles=state.setdefault('headline_keys',{})
     candidates=[]
     read_feed_keys = set()
     for feed,entries in available:
+        if feed.get('kind') == 'close':
+            continue
         feed_key = feed.get('state_key', feed['url'])
         f=state['feeds'].setdefault(feed_key,{'initialized':False,'seen':{}})
         for item in entries:
@@ -47,7 +59,8 @@ def select(available,state,now,watchlist):
                 f['seen'][item['id']]=now.isoformat();continue
             if published>now:continue
             edit=classify(item,watchlist)
-            if not edit:continue
+            if not edit or (feed.get('kind') == 'macro' and edit['kind'] != 'macro'):
+                continue
             key=rss.canonical_key(item['link'])
             title_key=hashlib.sha256(re.sub(r'\W+','',normalized(item['title'])).encode()).hexdigest()
             if key in articles or title_key in titles:
@@ -56,18 +69,74 @@ def select(available,state,now,watchlist):
         read_feed_keys.add(feed_key)
     for feed_key in read_feed_keys:
         state['feeds'][feed_key]['initialized'] = True
-    candidates.sort(key=lambda x:(x['editorial']['priority'],-x['published'].timestamp()))
-    selected=[];seen_links=set();seen_titles=set();macro=0;scopes=set()
-    for item in candidates:
-        e=item['editorial']
-        if len(selected)>=min(3,max(0,rss.MAX_DAILY_MESSAGES-daily['count'])):break
-        if item['key'] in seen_links or item['title_key'] in seen_titles:continue
-        if e['kind']=='macro' and macro>=1:continue
-        companies = set(e['scope'].split(' / ')) if e['kind'] == 'company' else set()
-        if companies & scopes:continue
-        selected.append(item);seen_links.add(item['key']);seen_titles.add(item['title_key']);scopes.update(companies)
-        macro+=e['kind']=='macro'
-    return selected
+    candidates.sort(key=lambda item: (item['editorial']['priority'], -item['published'].timestamp()))
+    selected = []
+    seen_links, seen_titles = set(), set()
+    companies = set(daily.get('companies', []))
+    macro_sent = daily.get('macro', 0)
+    capacity = min(3, max(0, rss.MAX_DAILY_MESSAGES - daily['count']))
+    # Reserve a slot for macro when a qualifying story is available.
+    for kind in ('macro', 'company'):
+        for item in candidates:
+            if len(selected) >= capacity:
+                break
+            editorial = item['editorial']
+            keys = company_keys(editorial)
+            if editorial['kind'] != kind or companies & keys:
+                continue
+            if item['key'] in seen_links or item['title_key'] in seen_titles:
+                continue
+            if kind == 'macro' and (macro_sent >= 2 or any(x['editorial']['kind'] == 'macro' for x in selected)):
+                break
+            if kind == 'company' and macro_sent == 0 and daily['count'] + len(selected) >= rss.MAX_DAILY_MESSAGES - 1:
+                break
+            selected.append(item)
+            seen_links.add(item['key'])
+            seen_titles.add(item['title_key'])
+            companies.update(keys)
+    return sorted(selected, key=lambda item: item['editorial']['kind'] == 'macro')
+
+
+def safe_text(value, limit):
+    return re.sub(r'([\\`*_{}\[\]()<>~|])', r'\\\1', value.replace('\n', ' '))[:limit]
+
+
+def publish_close(available, state, endpoint, now):
+    new_york = ZoneInfo('America/New_York')
+    local = now.astimezone(new_york)
+    session = local.date().isoformat()
+    if local.weekday() >= 5 or local.time() < time(16) or state.get('last_close') == session:
+        return
+    reports = []
+    for feed, entries in available:
+        if feed.get('kind') != 'close':
+            continue
+        for item in entries:
+            if item.get('language', 'fr') != 'fr' or not item['published'] or item['published'] > now:
+                continue
+            published = item['published'].astimezone(new_york)
+            if published.date() != local.date() or published.time() < time(13):
+                continue
+            title = normalized(item['title'])
+            if not re.search(r"\bwall street\s+(?:a\s+)?(?:clotur\w*|termin\w*|fin(?:it|i|issent))\s+(?:la seance\s+)?(?:en\b|sur\b|dans\b|a l.equilibre)", title):
+                continue
+            reports.append(item)
+    if not reports:
+        return
+    report = max(reports, key=lambda item: item['published'])
+    excerpt = report.get('summary', '')
+    if normalized(report['title']) in normalized(excerpt):
+        excerpt = ''
+    content = f"**Récap de clôture américaine · {local:%d/%m/%Y}**\n{safe_text(report['title'], 240)}"
+    if excerpt:
+        content += f"\n{safe_text(excerpt, 450)}"
+    content += f"\n{safe_text(report['source'], 80)} · [Lire le bilan](<{report['link']}>)"
+    if len(content) > 2000:
+        return
+    rss.discord_post(endpoint, content)
+    state['last_close'] = session
+    rss.save_state(state)
+    print('Récap de clôture confirmé par Discord.')
 
 
 def publish_briefing(available,state,endpoint,now):
@@ -76,15 +145,18 @@ def publish_briefing(available,state,endpoint,now):
     eligible = available
     if not os.environ.get('DEEPL_API_KEY', '').strip().endswith(':fx'):
         eligible = [(feed, french_items(entries)) for feed, entries in available]
-    selected = french_items(select(eligible, state, now, watchlist))
+    candidates = select(eligible, state, now, watchlist)
+    selected = french_items(candidates)
+    if len(selected) < len(candidates):
+        french = [(feed, [item for item in entries if item.get('language', 'fr') == 'fr'])
+                  for feed, entries in available]
+        selected = select(french, state, now, watchlist)
     rss.save_state(state)
     if not selected:
         status = 'Plafond quotidien atteint.' if state['daily']['count'] >= rss.MAX_DAILY_MESSAGES else 'Aucune nouvelle information ciblée éligible.'
         print(status)
         execution_summary(available, watchlist, state, status)
         return 0
-    def safe_text(value, limit):
-        return re.sub(r'([\\`*_{}\[\]()<>~|])', r'\\\1', value.replace('\n',' '))[:limit]
     content='\n\n'.join(
         f"**{safe_text(x['title'], 240)}**\n"
         f"{x['editorial']['topic']} · {safe_text(x['source'], 80)} · "
@@ -98,7 +170,13 @@ def publish_briefing(available,state,endpoint,now):
         execution_summary(available, watchlist, state, 'Échec du rendu ou de la publication : livraison non confirmée.')
         raise
     # Only receipt-confirmed messages advance the queue and daily counter.
-    state['daily']['count']+=len(selected)
+    daily = state['daily']
+    daily['count'] += len(selected)
+    companies = set(daily.get('companies', []))
+    for item in selected:
+        companies.update(company_keys(item['editorial']))
+    daily['companies'] = sorted(companies)
+    daily['macro'] = daily.get('macro', 0) + sum(item['editorial']['kind'] == 'macro' for item in selected)
     for x in selected:
         state['feeds'][x['feed_url']]['seen'][x['id']]=now.isoformat()
         state['articles'][x['key']]=now.isoformat()

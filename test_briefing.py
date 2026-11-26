@@ -7,7 +7,7 @@ from io import BytesIO
 from PIL import Image
 import rss_to_discord as rss
 from editorial import classify
-from briefing import select, publish_briefing, execution_summary
+from briefing import select, publish_briefing, publish_close, execution_summary
 from carousel import render
 
 class BriefingTests(unittest.TestCase):
@@ -74,6 +74,48 @@ class BriefingTests(unittest.TestCase):
             with Image.open(BytesIO(data)) as im:self.assertEqual(im.size,(1080,1080))
         self.state['daily']={'date':'2026-11-11','count':8}
         self.assertEqual(select([(self.feed,[item])],self.state,self.now,self.watch),[])
+    def test_daily_company_limit_and_macro_reservation(self):
+        watch = [('Example Inc',), ('Essai Média',), ('Fictif SA',)]
+        items = [
+            self.item('Example Inc publie ses résultats', 'a'),
+            self.item('Example Inc annonce un partenariat', 'b'),
+            self.item('Essai Média publie ses résultats', 'c'),
+            self.item('Fictif SA annonce une acquisition', 'd'),
+            self.item('Incendie sur un pétrolier dans le détroit', 'e'),
+        ]
+        with patch('briefing.watchlist_from_env', return_value=watch), patch('briefing.render', return_value=[]), patch.object(rss, 'save_state'), patch.object(rss, 'discord_post', return_value={'id': '123'}) as post:
+            self.assertEqual(publish_briefing([(self.feed, items)], self.state, 'endpoint', self.now), 3)
+            self.assertIn('pétrolier', post.call_args.args[1])
+            self.assertEqual(publish_briefing([(self.feed, items)], self.state, 'endpoint', self.now), 1)
+            self.assertIn('Fictif SA', post.call_args.args[1])
+            self.assertNotIn('Example Inc', str(self.state['daily']))
+
+    def test_company_mention_in_excerpt_is_not_company_news(self):
+        item = dict(self.item('Un baromètre de popularité'), summary='Example Inc est mentionnée.')
+        self.assertIsNone(classify(item, self.watch))
+        self.assertIsNone(classify(self.item('Example Inc : revue de popularité'), self.watch))
+
+    def test_secret_accepts_common_separators(self):
+        from editorial import watchlist_from_env
+        with patch.dict('os.environ', {'WATCHLIST': 'Exemple Alpha; Exemple Beta|EXB', 'WATCHLIST_EXTRA': 'Exemple Gamma, Exemple Delta'}):
+            self.assertIn(('Exemple Beta', 'EXB'), watchlist_from_env())
+            self.assertIn(('Exemple Delta',), watchlist_from_env())
+
+    def test_close_requires_a_current_confirmed_session_report_and_posts_once(self):
+        now = self.now.replace(hour=22)
+        report = dict(self.item('Wall Street termine en hausse'), published=now-timedelta(minutes=20))
+        preview = dict(report, title='Comment Wall Street va terminer en hausse demain')
+        old = dict(report, published=report['published']-timedelta(days=1))
+        close = dict(self.feed, kind='close')
+        with patch.object(rss, 'save_state'), patch.object(rss, 'discord_post') as post:
+            publish_close([(close, [preview, old])], self.state, 'endpoint', now)
+            post.assert_not_called()
+            publish_close([(close, [report])], self.state, 'endpoint', now)
+            publish_close([(close, [report])], self.state, 'endpoint', now)
+            post.assert_called_once()
+            self.assertIn('11/11/2026', post.call_args.args[1])
+            self.assertIn('https://example.org/a', post.call_args.args[1])
+
     def test_same_headline_across_sources_deduplicated(self):
         a=self.item('Example Inc annonce ses résultats','a');b=self.item(a['title'],'b')
         self.assertEqual(len(select([(self.feed,[a,b])],self.state,self.now,self.watch)),1)
