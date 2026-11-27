@@ -115,6 +115,15 @@ class BriefingTests(unittest.TestCase):
         self.assertEqual(late[0]['kind'], 'close')
         self.assertEqual(late[1]['language'], 'en')
 
+    def test_thanksgiving_and_short_session(self):
+        holiday = self.now.replace(day=26, hour=22)
+        close = self.now.replace(day=27, hour=18)
+        self.assertIsNone(rss.completed_us_close(holiday))
+        self.assertIsNone(rss.completed_us_close(close - timedelta(seconds=1)))
+        self.assertEqual(rss.completed_us_close(close), close)
+        self.assertEqual(rss.completed_us_close(close - timedelta(days=2) + timedelta(hours=3)),
+                         close - timedelta(days=2) + timedelta(hours=3))
+
     def test_close_requires_a_current_confirmed_session_report_and_posts_once(self):
         now = self.now.replace(hour=22)
         report = dict(self.item('Wall Street termine en hausse'), published=now-timedelta(minutes=20))

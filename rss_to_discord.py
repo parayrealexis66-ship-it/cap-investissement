@@ -303,6 +303,17 @@ def tracked_searches(feed):
     return searches
 
 
+def completed_us_close(now):
+    import exchange_calendars
+
+    day = now.astimezone(ZoneInfo('America/New_York')).date().isoformat()
+    calendar = exchange_calendars.get_calendar('XNYS')
+    if not calendar.is_session(day):
+        return None
+    close = calendar.session_close(day).to_pydatetime()
+    return close if now >= close else None
+
+
 def search_plan(feeds, now, check=False):
     # Alternate company editions across scheduled passes. Broad feeds remain active.
     language = 'fr' if now.minute < 30 else 'en'
@@ -313,8 +324,7 @@ def search_plan(feeds, now, check=False):
         if not check and google and not feed.get('fixed_query') and feed.get('language') != language:
             continue
         if not check and feed.get('kind') == 'close':
-            local = now.astimezone(ZoneInfo('America/New_York'))
-            if local.weekday() >= 5 or local.hour < 16:
+            if completed_us_close(now) is None:
                 continue
         yield from tracked_searches(feed)
 

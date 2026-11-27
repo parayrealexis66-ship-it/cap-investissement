@@ -1,1 +1,2 @@
 Pillow==13.0.0
+exchange-calendars==4.13.3

@@ -1,4 +1,4 @@
-from datetime import time, timedelta
+from datetime import timedelta
 from zoneinfo import ZoneInfo
 import hashlib
 import re
@@ -105,7 +105,8 @@ def publish_close(available, state, endpoint, now):
     new_york = ZoneInfo('America/New_York')
     local = now.astimezone(new_york)
     session = local.date().isoformat()
-    if local.weekday() >= 5 or local.time() < time(16) or state.get('last_close') == session:
+    close = rss.completed_us_close(now)
+    if close is None or state.get('last_close') == session:
         return
     reports = []
     for feed, entries in available:
@@ -115,7 +116,7 @@ def publish_close(available, state, endpoint, now):
             if item.get('language', 'fr') != 'fr' or not item['published'] or item['published'] > now:
                 continue
             published = item['published'].astimezone(new_york)
-            if published.date() != local.date() or published.time() < time(13):
+            if published.date() != local.date() or published < close:
                 continue
             title = normalized(item['title'])
             if not re.search(r"\bwall street\s+(?:a\s+)?(?:clotur\w*|termin\w*|fin(?:it|i|issent))\s+(?:la seance\s+)?(?:en\b|sur\b|dans\b|a l.equilibre)", title):
