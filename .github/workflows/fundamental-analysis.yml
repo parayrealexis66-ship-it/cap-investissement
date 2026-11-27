@@ -1,6 +1,12 @@
 name: Publier deux analyses fondamentales
 on:
   workflow_dispatch:
+    inputs:
+      lot:
+        description: Lot à publier
+        type: choice
+        options: [standard, adyen]
+        default: standard
 permissions:
   contents: read
 concurrency: cap-editorial-pair
@@ -16,4 +22,4 @@ jobs:
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
           DISCORD_GUILD_ID: ${{ secrets.DISCORD_GUILD_ID }}
-          FUNDAMENTAL_ANALYSES: ${{ secrets.FUNDAMENTAL_ANALYSES }}
+          FUNDAMENTAL_ANALYSES: ${{ secrets[inputs.lot == 'adyen' && 'FUNDAMENTAL_ANALYSES_ADYEN' || 'FUNDAMENTAL_ANALYSES'] }}
