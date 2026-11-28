@@ -22,6 +22,8 @@ jobs:
           import sys
           sys.path.insert(0,"server")
           from member_access import api, BASE, GUILD, key, single, recent, VIEW, RULES
+          flags = int(api("GET","/applications/@me").get("flags",0))
+          print(f"Lecture des messages ordinaires autorisée={bool(flags & ((1 << 18) | (1 << 19)))}")
           channels = api("GET", BASE + "/channels")
           roles = {r["id"]:r for r in api("GET", BASE + "/roles")}
           owner = api("GET", BASE)["owner_id"]
