@@ -1,0 +1,35 @@
+name: Accès membres Discord
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/discord-member-access.yml', 'server/member_access.py']
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+permissions:
+  contents: read
+  statuses: write
+concurrency:
+  group: discord-member-access
+  cancel-in-progress: false
+jobs:
+  access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python -m py_compile server/member_access.py
+      - name: Appliquer ou traiter les confirmations
+        env:
+          BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GUILD: ${{ secrets.DISCORD_GUILD_ID }}
+          MODE: ${{ github.event_name == 'schedule' && 'confirm' || 'setup' }}
+        run: python server/member_access.py
+      - name: Enregistrer le résultat de la bascule
+        if: ${{ always() && github.event_name != 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: |
+          gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$RESULT" -f context="discord/member-access" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --silent
