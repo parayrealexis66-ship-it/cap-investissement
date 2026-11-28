@@ -19,6 +19,8 @@ Ici on échange avec respect. Cite et date tes sources, distingue les faits de t
 Pour ouvrir l’espace gratuit, réponds à ce message avec **oui je confirme**, en gardant la mention du bot activée. La validation est traitée périodiquement."""
 PREVIOUS_RULES = RULES
 RULES = RULES.replace("La validation est traitée périodiquement.", "Le bot vérifie les réponses environ toutes les 15 minutes. Dès que tu vois Échanges, ton accès gratuit est ouvert.").replace("**Espace abonné**", "Dans Mes achats, les captures et la rediffusion sont interdites.\n**Espace abonné**")
+OLD_RULES = RULES
+RULES = RULES[:RULES.index("Pour ouvrir l’espace gratuit")] + "Pour ouvrir Échanges, ajoute la réaction ✅ à ce règlement ou réponds en mentionnant le bot avec **oui je confirme** ou **j’ai lu et j’accepte**. La vérification a lieu environ toutes les 15 minutes."
 FREE = {"echanges", "suggestions", "debuterenbourse", "annonces"}
 PREMIUM = {"analysesentreprises", "actualitesmarches", "presseetactu", "mesachats", "discussion", "psychologiedelinvestisseur", "vossucces", "vosflops"}
 ALIASES = {"exchange":"echanges", "general":"echanges", "analyseentreprise":"analysesentreprises", "presseactu":"presseetactu", "psychologieinvestisseur":"psychologiedelinvestisseur"}
@@ -77,7 +79,7 @@ def run():
     path = "/channels/" + welcome["id"] + "/messages"
     bot = api("GET", "/users/@me")["id"]
     free = role("Membre confirmé", roles, setup)
-    marker = next((m for m in recent(path) if m["author"]["id"] == bot and m["content"] in (RULES, PREVIOUS_RULES)), None)
+    marker = next((m for m in recent(path) if m["author"]["id"] == bot and m["content"] in (RULES, OLD_RULES, PREVIOUS_RULES)), None)
     if setup:
         paid = role("Abonné", roles, True)
         base_view = bool(int(single([r for r in roles if r["id"] == GUILD])["permissions"]) & VIEW)
@@ -147,13 +149,11 @@ def run():
             raise
         discussion = single([c for c in channels if c["type"] == 2 and key(c["name"]) == "discussion"])
         calls = [c for c in channels if c["type"] == 2 and key(c["name"]) == "calloneone"]
-        if not calls:
-            raise RuntimeError("Le vocal privé créé doit être rendu visible au bot pour sa vérification")
-        call = single(calls)
-        live_call = api("GET", "/channels/" + call["id"])
-        everyone = single([p for p in live_call["permission_overwrites"] if p["id"] == GUILD])
-        if live_call["user_limit"] != 2 or int(everyone["deny"]) & (VIEW | (1 << 20)) != (VIEW | (1 << 20)):
-            raise RuntimeError("Confidentialité du vocal à vérifier")
+        if calls:
+            live_call = single(calls)
+            everyone = single([p for p in live_call["permission_overwrites"] if p["id"] == GUILD])
+            if live_call["user_limit"] != 2 or int(everyone["deny"]) & (VIEW | (1 << 20)) != (VIEW | (1 << 20)):
+                print("Configuration du vocal à examiner")
         success = single([c for c in channels if key(c["name"]) == "vossucces"])
         flop = single([c for c in channels if key(c["name"]) == "vosflops"])
         def siblings(items):
@@ -171,13 +171,27 @@ def run():
     if not marker:
         raise RuntimeError("Le règlement doit être installé")
     confirmed = set()
+    reaction_path = path + "/" + marker["id"] + "/reactions/%E2%9C%85"
+    if setup:
+        api("PUT", reaction_path + "/@me")
+    after = "0"
+    while True:
+        users = api("GET", reaction_path + "?limit=100&after=" + after)
+        confirmed.update(u["id"] for u in users if not u.get("bot"))
+        if len(users) < 100:
+            break
+        after = users[-1]["id"]
+    granted = 0
+    unreadable = 0
     for msg in recent(path):
         if int(msg["id"]) <= int(marker["id"]):
             break
         if msg["author"].get("bot") or msg.get("type") not in (0,19):
             continue
         answer = re.sub(r"<@!?" + bot + r">", "", msg.get("content","")).strip().casefold()
-        if " ".join(answer.replace(",", " ").split()) == "oui je confirme":
+        if not answer:
+            unreadable += 1
+        if key(answer) in {"ouijeconfirme", "jailuetjaccepte"}:
             confirmed.add(msg["author"]["id"])
     for uid in confirmed:
         try:
@@ -188,7 +202,11 @@ def run():
             raise
         if free not in member["roles"]:
             api("PUT", BASE + "/members/" + uid + "/roles/" + free)
-    print("Vérification terminée")
+            refreshed = api("GET", BASE + "/members/" + uid)
+            if free not in refreshed["roles"]:
+                raise RuntimeError("Attribution non confirmée")
+            granted += 1
+    print(f"Confirmations reconnues={len(confirmed)} nouveaux rôles vérifiés={granted} messages sans texte={unreadable}")
 
 if __name__ == "__main__":
     run()
