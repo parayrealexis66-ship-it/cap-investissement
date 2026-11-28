@@ -49,6 +49,11 @@ class Client(discord.Client):
 
     async def setup_hook(self):
         self.add_view(Confirmation())
+        self.billing = None
+        if os.environ.get("STRIPE_SECRET_KEY"):
+            from billing_discord import Billing
+            self.billing = Billing(self, GUILD_ID)
+            self.add_view(self.billing)
 
     async def on_ready(self):
         guild = self.get_guild(GUILD_ID)
@@ -61,6 +66,8 @@ class Client(discord.Client):
                 self.rules_id = message.id
                 await message.edit(view=Confirmation())
                 log.info("Bouton de confirmation disponible")
+                if self.billing:
+                    await self.billing.start(guild)
                 return
         raise RuntimeError("Règlement introuvable")
 
