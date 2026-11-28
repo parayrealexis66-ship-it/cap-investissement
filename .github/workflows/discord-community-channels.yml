@@ -1,0 +1,66 @@
+name: Salons participatifs Cap Investissement
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/discord-community-channels.yml']
+permissions: {}
+concurrency: cap-community-channels
+jobs:
+  channels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Renommer et compléter les salons existants
+        env:
+          BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GUILD: ${{ secrets.DISCORD_GUILD_ID }}
+        shell: python
+        run: |
+          import json, os, time, unicodedata
+          from urllib.request import Request, urlopen
+          from urllib.error import HTTPError
+          guild = '/guilds/' + os.environ['GUILD'] + '/channels'
+          def api(method, path, payload=None):
+              data = json.dumps(payload).encode() if payload is not None else None
+              request = Request('https://discord.com/api/v10' + path, method=method, data=data, headers={'Authorization':'Bot ' + os.environ['BOT_TOKEN'], 'Content-Type':'application/json', 'User-Agent':'CapInvestissement (Community setup, 1.0)'})
+              for attempt in range(5):
+                  try:
+                      with urlopen(request, timeout=25) as response:
+                          return json.load(response)
+                  except HTTPError as error:
+                      if error.code != 429 or attempt == 4:
+                          raise RuntimeError('Discord HTTP ' + str(error.code)) from None
+                      time.sleep(float(json.load(error)['retry_after']) + 1)
+          def key(name):
+              return ''.join(c for c in unicodedata.normalize('NFKD', name).lower() if c.isascii() and c.isalnum())
+          def lookup(channels, aliases):
+              matches = [c for c in channels if c['type'] == 0 and key(c['name']) in aliases]
+              if len(matches) > 1:
+                  raise ValueError('Plusieurs salons possibles')
+              return matches[0] if matches else None
+          channels = api('GET', guild)
+          successes = lookup(channels, {'monportefeuille','vossucces'})
+          guide = lookup(channels, {'reperesinvestisseur','reperesinvestisseurs','debuterenbourse'})
+          general = lookup(channels, {'echanges','exchange','general'})
+          flops = lookup(channels, {'vosflops'})
+          suggestions = lookup(channels, {'suggestions'})
+          if not all([successes, guide, general]):
+              raise ValueError('Un salon de référence est introuvable')
+          def rename(channel, name, topic=None):
+              changes = {'name':name}
+              if topic:
+                  changes['topic'] = topic
+              if any(channel.get(k) != v for k,v in changes.items()):
+                  api('PATCH', '/channels/' + channel['id'], changes)
+          def sibling(existing, reference, name, topic):
+              if existing:
+                  return
+              perms = [{k:p[k] for k in ('id','type','allow','deny')} for p in reference['permission_overwrites']]
+              api('POST', guild, {'type':0,'name':name,'topic':topic,'parent_id':reference['parent_id'],'permission_overwrites':perms})
+          rename(successes, '🏆・vos-succès', 'Une vente clôturée en gain ? Partage le résultat en %, ta décision et la leçon retenue. Masque les données personnelles sur toute capture.')
+          sibling(flops, successes, '📉・vos-flops', 'Une vente clôturée en perte ? Partage le résultat en %, ta décision et ce que tu ferais différemment. Bienveillance et captures anonymisées.')
+          sibling(suggestions, general, '💡・suggestions', 'Quelle amélioration te serait utile ? Décris le besoin et donne un exemple.')
+          rename(guide, '📚・débuter-en-bourse')
+          verified = api('GET', guild)
+          if not all(lookup(verified, {k}) for k in ('vossucces','vosflops','suggestions','debuterenbourse')):
+              raise RuntimeError('Vérification des salons incomplète')
+          print('Quatre salons vérifiés.')
