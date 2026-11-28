@@ -1,10 +1,11 @@
 """Run with discord.py >=2.4,<3 on a continuous host using the existing bot secrets."""
+import re
 import logging
 import os
 
 import discord
 
-from member_access import RULES, key
+from member_access import ACCEPTED, RULES, key
 
 GUILD_ID = int(os.environ["GUILD"])
 log = logging.getLogger(__name__)
@@ -47,6 +48,30 @@ class Client(discord.Client):
     welcome_id = None
     rules_id = None
 
+    async def confirm_member(self, member):
+        role = unique_named(member.guild.roles, "Membre confirmé")
+        if role.managed or role.permissions.value:
+            raise RuntimeError("Rôle incompatible")
+        if role not in member.roles:
+            await member.add_roles(role, reason="Règlement accepté dans Commencer ici")
+
+    async def on_raw_reaction_add(self, event):
+        if (event.guild_id == GUILD_ID and event.message_id == self.rules_id
+                and str(event.emoji) == "✅" and event.member and not event.member.bot):
+            await self.confirm_member(event.member)
+
+    async def on_message(self, message):
+        if (message.channel.id != self.welcome_id or message.author.bot
+                or message.type not in (discord.MessageType.default, discord.MessageType.reply)):
+            return
+        answer = re.sub(r"<@!?" + str(self.user.id) + r">", "", message.content)
+        if key(answer) in ACCEPTED:
+            await self.confirm_member(message.author)
+        elif (message.content and message.author.id != message.guild.owner_id
+                and not message.author.guild_permissions.manage_messages
+                and message.channel.permissions_for(message.guild.me).manage_messages):
+            await message.delete()
+
     async def setup_hook(self):
         self.add_view(Confirmation())
         self.billing = None
@@ -73,5 +98,5 @@ class Client(discord.Client):
 
 
 if __name__ == "__main__":
-    client = Client(intents=discord.Intents(guilds=True))
+    client = Client(intents=discord.Intents(guilds=True, guild_messages=True, guild_reactions=True, message_content=True))
     client.run(os.environ["BOT_TOKEN"])
