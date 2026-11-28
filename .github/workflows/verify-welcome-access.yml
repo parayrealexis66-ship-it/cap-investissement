@@ -1,0 +1,73 @@
+name: Vérifier les accès après accueil
+on:
+  workflow_dispatch:
+  push:
+    paths: ['.github/workflows/verify-welcome-access.yml']
+permissions:
+  contents: read
+  statuses: write
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Vérification anonyme en lecture seule
+        env:
+          BOT_TOKEN: ${{ secrets.DISCORD_BOT_TOKEN }}
+          GUILD: ${{ secrets.DISCORD_GUILD_ID }}
+        shell: python
+        run: |
+          import sys
+          sys.path.insert(0,"server")
+          from member_access import api, BASE, GUILD, key, single, recent, VIEW, RULES
+          channels = api("GET", BASE + "/channels")
+          roles = {r["id"]:r for r in api("GET", BASE + "/roles")}
+          owner = api("GET", BASE)["owner_id"]
+          welcome = single([c for c in channels if key(c["name"])=="commencerici"])
+          general = single([c for c in channels if key(c["name"]) in ("echanges","general","exchange")])
+          free = single([r for r in roles.values() if key(r["name"])=="membreconfirme"])["id"]
+          paid = single([r for r in roles.values() if key(r["name"])=="abonne"])["id"]
+          def visible(ids):
+              perms = int(roles[GUILD]["permissions"])
+              for rid in ids[:-1]:
+                  perms |= int(roles[rid]["permissions"])
+              if perms & 8: return True
+              for group in ([GUILD], ids[:-1], ids[-1:]):
+                  allow = deny = 0
+                  for p in general["permission_overwrites"]:
+                      if p["id"] in group:
+                          allow |= int(p["allow"])
+                          deny |= int(p["deny"])
+                  perms = (perms & ~deny) | allow
+              return bool(perms & VIEW)
+          participants = set()
+          for m in recent("/channels/" + welcome["id"] + "/messages"):
+              if not m["author"].get("bot"):
+                  participants.add(m["author"]["id"])
+              elif m["content"]==RULES:
+                  route = "/channels/"+welcome["id"]+"/messages/"+m["id"]+"/reactions/%E2%9C%85?limit=100&after="
+                  after = "0"
+                  while True:
+                      users = api("GET",route+after)
+                      participants.update(u["id"] for u in users if not u.get("bot"))
+                      if len(users)<100: break
+                      after=users[-1]["id"]
+          from collections import Counter
+          counts=Counter()
+          for uid in participants-{owner}:
+              try: member=api("GET",BASE+"/members/"+uid)
+              except RuntimeError as exc:
+                  if str(exc)=="Discord HTTP 404": continue
+                  raise
+              ids=member["roles"]
+              access=visible([*ids,uid])
+              counts[(free in ids,paid in ids,access)]+=1
+          for (free_role,paid_role,access),n in counts.items():
+              print(f"Bilan membres={n} confirme={free_role} abonne={paid_role} echanges={access}")
+      - if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RESULT: ${{ job.status }}
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$RESULT" -f context="discord/welcome-audit" -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --silent
