@@ -148,14 +148,9 @@ def run():
         discussion = single([c for c in channels if c["type"] == 2 and key(c["name"]) == "discussion"])
         calls = [c for c in channels if c["type"] == 2 and key(c["name"]) == "calloneone"]
         if not calls:
-            call = api("POST", BASE + "/channels", {
-                "type":2, "name":"Call one-one", "parent_id":discussion.get("parent_id"),
-                "user_limit":2, "position":discussion["position"] + 1,
-                "permission_overwrites":[{"id":GUILD, "type":0, "allow":"0", "deny":str(VIEW | (1 << 20))}]
-            })
-        else:
-            call = single(calls)
-        live_call = single([c for c in api("GET", BASE + "/channels") if c["id"] == call["id"]])
+            raise RuntimeError("Le vocal privé créé doit être rendu visible au bot pour sa vérification")
+        call = single(calls)
+        live_call = api("GET", "/channels/" + call["id"])
         everyone = single([p for p in live_call["permission_overwrites"] if p["id"] == GUILD])
         if live_call["user_limit"] != 2 or int(everyone["deny"]) & (VIEW | (1 << 20)) != (VIEW | (1 << 20)):
             raise RuntimeError("Confidentialité du vocal à vérifier")
