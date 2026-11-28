@@ -17,6 +17,8 @@ Ici on échange avec respect. Cite et date tes sources, distingue les faits de t
 **Accès gratuit** · Échanges, Suggestions, Débuter en bourse et Annonces.
 **Espace abonné** · Analyses, actualités, documentation et échanges sur les trades clôturés, gagnants comme perdants.
 Pour ouvrir l’espace gratuit, réponds à ce message avec **oui je confirme**, en gardant la mention du bot activée. La validation est traitée périodiquement."""
+PREVIOUS_RULES = RULES
+RULES = RULES.replace("La validation est traitée périodiquement.", "Le bot vérifie les réponses environ toutes les 15 minutes. Dès que tu vois Échanges, ton accès gratuit est ouvert.").replace("**Espace abonné**", "Dans Mes achats, les captures et la rediffusion sont interdites.\n**Espace abonné**")
 FREE = {"echanges", "suggestions", "debuterenbourse", "annonces"}
 PREMIUM = {"analysesentreprises", "actualitesmarches", "presseetactu", "mesachats", "discussion", "psychologiedelinvestisseur", "vossucces", "vosflops"}
 ALIASES = {"exchange":"echanges", "general":"echanges", "analyseentreprise":"analysesentreprises", "presseactu":"presseetactu", "psychologieinvestisseur":"psychologiedelinvestisseur"}
@@ -75,7 +77,7 @@ def run():
     path = "/channels/" + welcome["id"] + "/messages"
     bot = api("GET", "/users/@me")["id"]
     free = role("Membre confirmé", roles, setup)
-    marker = next((m for m in recent(path) if m["author"]["id"] == bot and m["content"] == RULES), None)
+    marker = next((m for m in recent(path) if m["author"]["id"] == bot and m["content"] in (RULES, PREVIOUS_RULES)), None)
     if setup:
         paid = role("Abonné", roles, True)
         base_view = bool(int(single([r for r in roles if r["id"] == GUILD])["permissions"]) & VIEW)
@@ -123,6 +125,8 @@ def run():
             raise RuntimeError("Salons attendus manquants, séparation suspendue")
         if not marker:
             marker = api("POST", path, {"content":RULES,"allowed_mentions":{"parse":[]}})
+        elif marker["content"] != RULES:
+            api("PATCH", path + "/" + marker["id"], {"content":RULES, "allowed_mentions":{"parse":[]}})
         done = []
         try:
             for ident,original,target in plans:
@@ -141,6 +145,20 @@ def run():
             if failures:
                 raise RuntimeError("Retour arrière incomplet") from None
             raise
+        success = single([c for c in channels if key(c["name"]) == "vossucces"])
+        flop = single([c for c in channels if key(c["name"]) == "vosflops"])
+        def siblings(items):
+            return sorted((c for c in items if c.get("parent_id") == success["parent_id"] and c["type"] in (0,5,15,16)), key=lambda c:(c["position"],int(c["id"])))
+        order = [c["id"] for c in siblings(channels)]
+        if flop["parent_id"] != success["parent_id"]:
+            raise RuntimeError("Catégories différentes")
+        order.remove(flop["id"])
+        order.insert(order.index(success["id"]) + 1, flop["id"])
+        if order != [c["id"] for c in siblings(channels)]:
+            api("PATCH", BASE + "/channels", [{"id":ident,"position":i} for i,ident in enumerate(order)])
+        actual = [c["id"] for c in siblings(api("GET",BASE + "/channels"))]
+        if actual.index(flop["id"]) != actual.index(success["id"]) + 1:
+            raise RuntimeError("Ordre non confirmé")
     if not marker:
         raise RuntimeError("Le règlement doit être installé")
     confirmed = set()
@@ -150,7 +168,7 @@ def run():
         if msg["author"].get("bot") or msg.get("type") not in (0,19):
             continue
         answer = re.sub(r"<@!?" + bot + r">", "", msg.get("content","")).strip().casefold()
-        if " ".join(answer.split()) == "oui je confirme":
+        if " ".join(answer.replace(",", " ").split()) == "oui je confirme":
             confirmed.add(msg["author"]["id"])
     for uid in confirmed:
         try:
