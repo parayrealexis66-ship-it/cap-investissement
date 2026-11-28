@@ -1,0 +1,29 @@
+services:
+  - type: worker
+    name: cap-investissement-discord
+    runtime: python
+    region: frankfurt
+    plan: starter
+    numInstances: 1
+    autoDeployTrigger: "off"
+    buildCommand: python -m pip install 'discord.py>=2.4,<3'
+    startCommand: umask 077 && exec python server/instant_confirmation.py
+    disk:
+      name: acces-prives
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: BILLING_DB_PATH
+        value: /var/data/adhesions.sqlite3
+      - key: BOT_TOKEN
+        sync: false
+      - key: GUILD
+        sync: false
+      - key: STRIPE_SECRET_KEY
+        sync: false
+      - key: STRIPE_PRICE_ID
+        sync: false
+      - key: STRIPE_PORTAL_CONFIG_ID
+        sync: false
+      - key: BILLING_CHANNEL_ID
+        sync: false
