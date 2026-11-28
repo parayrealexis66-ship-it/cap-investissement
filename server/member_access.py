@@ -21,6 +21,7 @@ PREVIOUS_RULES = RULES
 RULES = RULES.replace("La validation est traitée périodiquement.", "Le bot vérifie les réponses environ toutes les 15 minutes. Dès que tu vois Échanges, ton accès gratuit est ouvert.").replace("**Espace abonné**", "Dans Mes achats, les captures et la rediffusion sont interdites.\n**Espace abonné**")
 OLD_RULES = RULES
 RULES = RULES[:RULES.index("Pour ouvrir l’espace gratuit")] + "Pour ouvrir Échanges, ajoute la réaction ✅ à ce règlement ou réponds en mentionnant le bot avec **oui je confirme** ou **j’ai lu et j’accepte**. La vérification a lieu environ toutes les 15 minutes."
+ACCEPTED = {"jeconfirme", "ouijeconfirme", "jailuetjaccepte"}
 FREE = {"echanges", "suggestions", "debuterenbourse", "annonces"}
 PREMIUM = {"analysesentreprises", "actualitesmarches", "presseetactu", "mesachats", "discussion", "psychologiedelinvestisseur", "vossucces", "vosflops"}
 ALIASES = {"exchange":"echanges", "general":"echanges", "analyseentreprise":"analysesentreprises", "presseactu":"presseetactu", "psychologieinvestisseur":"psychologiedelinvestisseur"}
@@ -181,6 +182,7 @@ def run():
         if len(users) < 100:
             break
         after = users[-1]["id"]
+    print(f"Réactions humaines au règlement={len(confirmed)}")
     granted = 0
     unreadable = 0
     for msg in recent(path):
@@ -191,7 +193,7 @@ def run():
         answer = re.sub(r"<@!?" + bot + r">", "", msg.get("content","")).strip().casefold()
         if not answer:
             unreadable += 1
-        if key(answer) in {"ouijeconfirme", "jailuetjaccepte"}:
+        if key(answer) in ACCEPTED:
             confirmed.add(msg["author"]["id"])
     for uid in confirmed:
         try:
